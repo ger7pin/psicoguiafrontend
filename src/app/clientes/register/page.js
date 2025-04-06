@@ -1,0 +1,33 @@
+'use client';
+
+import RegisterForm from '@/components/RegisterForm';
+import Navbar from '@/components/Navbar';
+import Link from 'next/link';
+
+export default function ClienteRegisterPage() {
+  return (
+    <>
+      <Navbar />
+      <div
+        className="min-h-screen bg-cover bg-center flex items-center justify-center px-4"
+        style={{ backgroundImage: "url('/img/clienteform.png')" }}
+      >
+        <div className="bg-white bg-opacity-90 p-8 rounded-lg shadow-lg max-w-md w-full md:ml-170">
+          <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">
+            Regístrate como cliente
+          </h2>
+          <RegisterForm userType="clientes" />
+          <p className="mt-6 text-sm text-center text-gray-600">
+            ¿Ya tienes una cuenta?{' '}
+            <Link
+              href="/clientes/login"
+              className="text-indigo-600 hover:underline font-medium"
+            >
+              Inicia sesión
+            </Link>
+          </p>
+        </div>
+      </div>
+    </>
+  );
+}
