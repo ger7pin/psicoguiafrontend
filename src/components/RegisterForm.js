@@ -20,84 +20,92 @@ export default function RegisterForm({ userType }) {
         ? { email, password, nombre, telefono, edad: extraField }
         : { email, password, nombre, telefono, especialidad: extraField };
 
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/register`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
+    try {
+      const res = await fetch(`http://localhost:3001/${userType}/register`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
 
-    const data = await res.json();
+      const data = await res.json();
 
-    if (res.ok) {
-      setMensaje('Registro exitoso');
-      router.push(`/${userType}/login`);
-    } else {
-      setMensaje(data.message || 'Error al registrarse');
+      if (res.ok) {
+        setMensaje('Registro exitoso. Redirigiendo al login...');
+        setTimeout(() => {
+          router.push(`/${userType}/login`);
+        }, 1500);
+      } else {
+        setMensaje(data?.message || 'Error al registrar usuario');
+      }
+    } catch (error) {
+      setMensaje('Error de conexión con el servidor');
     }
   };
 
   return (
-    <div className="max-w-md mx-auto mt-10 bg-white p-6 rounded-2xl shadow-lg">
-      <form onSubmit={handleRegister}>
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Nombre</label>
-          <input
-            type="text"
-            className="w-full mt-1 p-2 border border-gray-300 rounded-xl"
-            onChange={(e) => setNombre(e.target.value)}
-            required
-          />
-        </div>
+    <div className="max-w-md mx-auto mt-10 p-6 bg-white rounded-lg shadow-md">
+      <h1 className="text-2xl font-bold mb-4 text-center">Registro de {userType}</h1>
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Teléfono</label>
-          <input
-            type="tel"
-            className="w-full mt-1 p-2 border border-gray-300 rounded-xl"
-            onChange={(e) => setTelefono(e.target.value)}
-            required
-          />
+      {mensaje && (
+        <div className={`p-2 mb-4 rounded text-sm ${
+          mensaje.includes('exitoso') ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'
+        }`}>
+          {mensaje}
         </div>
+      )}
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">
-            {userType === 'clientes' ? 'Edad' : 'Especialidad'}
-          </label>
-          <input
-            type={userType === 'clientes' ? 'number' : 'text'}
-            className="w-full mt-1 p-2 border border-gray-300 rounded-xl"
-            onChange={(e) => setExtraField(e.target.value)}
-            required
-          />
-        </div>
+      <form onSubmit={handleRegister} className="space-y-4">
+        <input
+          type="text"
+          placeholder="Nombre"
+          className="w-full border border-gray-300 p-2 rounded"
+          value={nombre}
+          onChange={(e) => setNombre(e.target.value)}
+          required
+        />
 
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Email</label>
-          <input
-            type="email"
-            className="w-full mt-1 p-2 border border-gray-300 rounded-xl"
-            onChange={(e) => setEmail(e.target.value)}
-            required
-          />
-        </div>
+        <input
+          type="email"
+          placeholder="Correo electrónico"
+          className="w-full border border-gray-300 p-2 rounded"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          required
+        />
 
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700">Contraseña</label>
-          <input
-            type="password"
-            className="w-full mt-1 p-2 border border-gray-300 rounded-xl"
-            onChange={(e) => setPassword(e.target.value)}
-            required
-          />
-        </div>
+        <input
+          type="password"
+          placeholder="Contraseña"
+          className="w-full border border-gray-300 p-2 rounded"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+
+        <input
+          type="tel"
+          placeholder="Teléfono"
+          className="w-full border border-gray-300 p-2 rounded"
+          value={telefono}
+          onChange={(e) => setTelefono(e.target.value)}
+          required
+        />
+
+        <input
+          type="text"
+          placeholder={userType === 'clientes' ? 'Edad' : 'Especialidad'}
+          className="w-full border border-gray-300 p-2 rounded"
+          value={extraField}
+          onChange={(e) => setExtraField(e.target.value)}
+          required
+        />
 
         <button
           type="submit"
-          className="w-full bg-indigo-600 text-white py-2 rounded-xl hover:bg-indigo-700 transition"
+          className="w-full bg-indigo-600 hover:bg-indigo-700 text-white p-2 rounded transition"
         >
           Registrarse
         </button>
-        {mensaje && <p className="mt-4 text-sm text-center text-red-600">{mensaje}</p>}
       </form>
     </div>
   );

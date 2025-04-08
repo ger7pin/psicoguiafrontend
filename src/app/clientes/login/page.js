@@ -1,10 +1,11 @@
 'use client';
 
-import RegisterForm from '@/components/LoginForm';
+import LoginForm from '@/components/LoginForm';
+
 import Navbar from '@/components/Navbar';
 import Link from 'next/link';
 
-export default function ClienteRegisterPage() {
+export default function ClienteLoginPage() {
   return (
     <>
       <Navbar />
@@ -16,7 +17,7 @@ export default function ClienteRegisterPage() {
           <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">
             Accede como cliente
           </h2>
-          <RegisterForm userType="clientes" />
+          <LoginForm userType="clientes" />
           <p className="mt-6 text-sm text-center text-gray-600">
             ¿Aún no tienes cuenta?{' '}
             <Link

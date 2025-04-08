@@ -1,34 +1,118 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import FIRButton from '@/components/FIRButton'; // Ajusta la ruta si es necesario
 
 export default function Navbar() {
-  return (
-    <nav className="bg-indigo-600 text-white py-4 px-6 shadow-md">
-      <div className="max-w-7xl mx-auto flex justify-between items-center">
-        {/* Botón estilo Hero Section */}
-        <Link
-          href="/"
-          className="bg-indigo-50 text-indigo-700 px-4 py-2 rounded-md font-bold hover:bg-white transition"
-        >
-          PsicoGuía
-        </Link>
+  const [logueado, setLogueado] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const router = useRouter();
 
-        {/* Botones blancos para login */}
-        <div className="space-x-4 hidden md:flex">
-          <Link
-            href="/clientes/login"
-            className="bg-white text-indigo-600 px-4 py-2 rounded-md hover:bg-gray-100 transition font-medium"
-          >
-            Acceder como cliente
+  const rutaActual = typeof window !== 'undefined' ? window.location.pathname : '';
+  const tipo = rutaActual.includes('psicologos') ? 'psicologos' : 'clientes';
+
+  useEffect(() => {
+    const verificarSesion = async () => {
+      try {
+        const res = await fetch(`http://localhost:3001/${tipo}/verify`, {
+          credentials: 'include',
+        });
+        setLogueado(res.ok);
+      } catch {
+        setLogueado(false);
+      }
+    };
+
+    if (typeof window !== 'undefined') verificarSesion();
+  }, [tipo]);
+
+  const handleLogout = async () => {
+    try {
+      await fetch(`http://localhost:3001/${tipo}/logout`, {
+        method: 'POST',
+        credentials: 'include',
+      });
+      setLogueado(false);
+      router.push('/');
+    } catch (error) {
+      console.error('Error cerrando sesión:', error);
+    }
+  };
+
+  return (
+    <nav className="bg-white shadow-md fixed w-full z-50">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <Link href="/">
+            <button className="flex items-center transform transition-transform duration-200 hover:scale-105">
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                PsicologíaApp
+              </span>
+            </button>
           </Link>
-          <Link
-            href="/psicologos/login"
-            className="bg-white text-indigo-600 px-4 py-2 rounded-md hover:bg-gray-100 transition font-medium"
-          >
-            Acceder como psicólogo
-          </Link>
+
+          {/* Navegación escritorio */}
+          <div className="hidden md:flex items-center space-x-4">
+            {logueado ? (
+              <FIRButton onClick={handleLogout} variant="outline">
+                Cerrar sesión
+              </FIRButton>
+            ) : (
+              <>
+                <FIRButton href="/clientes/login" variant="secondary">
+                  Cliente
+                </FIRButton>
+                <FIRButton href="/psicologos/login" variant="secondary">
+                  Psicólogo
+                </FIRButton>
+                <FIRButton href="/preregistro" variant="primary">
+                  Registrarse
+                </FIRButton>
+              </>
+            )}
+          </div>
+
+          {/* Botón de menú móvil */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setIsMenuOpen(!isMenuOpen)}
+              className="inline-flex items-center justify-center p-2 rounded-md text-blue-600 hover:text-blue-700 hover:bg-blue-50 focus:outline-none"
+            >
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                {isMenuOpen ? (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16" />
+                )}
+              </svg>
+            </button>
+          </div>
         </div>
+
+        {/* Menú móvil */}
+        {isMenuOpen && (
+          <div className="md:hidden px-2 pt-2 pb-3 space-y-2">
+            {logueado ? (
+              <FIRButton onClick={handleLogout} className="w-full text-left" variant="outline">
+                Cerrar sesión
+              </FIRButton>
+            ) : (
+              <>
+                <FIRButton href="/clientes/login" className="w-full text-left" variant="secondary">
+                  Cliente
+                </FIRButton>
+                <FIRButton href="/psicologos/login" className="w-full text-left" variant="secondary">
+                  Psicólogo
+                </FIRButton>
+                <FIRButton href="/preregistro" className="w-full" variant="primary">
+                  Registrarse
+                </FIRButton>
+              </>
+            )}
+          </div>
+        )}
       </div>
     </nav>
   );
