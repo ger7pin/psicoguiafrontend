@@ -13,7 +13,7 @@ const useAuthRedirect = (userType, setSesionActiva) => {
           method: 'GET',
           credentials: 'include',
         });
-        const data = await res.json();
+        //const data = await res.json();
         if (res.ok === 'Sesión activa') {
           setSesionActiva(true);
 
