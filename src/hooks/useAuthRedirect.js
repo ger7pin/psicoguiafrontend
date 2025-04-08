@@ -18,7 +18,7 @@ const useAuthRedirect = (userType) => {
           router.push(`/${userType}/dashboard`);
         }
       } catch (err) {
-        console.warn('Sesión no activa. Continuar en login.');
+        console.warn('Sesión no activa. Continuar en login.',err);
       }
     };
 
