@@ -17,6 +17,7 @@ export default function PsicologoDashboard() {
     const verificarToken = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/psicologos/verify`, {
+          method: 'GET',
           credentials: 'include',
         });
 

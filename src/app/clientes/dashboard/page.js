@@ -17,6 +17,7 @@ export default function ClienteDashboard() {
     const verificarToken = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/verify`, {
+          method: 'GET',
           credentials: 'include',
         });
 
