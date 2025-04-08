@@ -25,3 +25,5 @@ const useAuthRedirect = (userType) => {
     verificarSesion();
   }, [userType, router]);
 };
+
+export default useAuthRedirect;
