@@ -1,33 +1,44 @@
-"use client";
-import { useEffect } from "react";
-import { useRouter } from "next/navigation";
+'use client';
 
-const useAuthRedirect = ({ userType }) => {
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+const useAuthRedirect = (tipo) => {
   const router = useRouter();
+  const [cargando, setCargando] = useState(true);
+  const [logueado, setLogueado] = useState(false);
 
   useEffect(() => {
-    const verificarToken = async () => {
+    const verificarSesion = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
-          method: 'GET',
-          credentials: 'include', // 🔥 Importante para que la cookie viaje
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${tipo}/verify`, {
+          credentials: 'include',
         });
 
-        if (!res.ok) throw new Error("No autorizado");
-
-        const data = await res.json();
-        const { email, rol } = data;
-
-        if (rol !== userType) throw new Error("Rol incorrecto");
-
-        router.push(`/${userType}s/dashboard`);
-      } catch (err) {
-        console.log("🔒 Usuario no autenticado, permanece en login");
+        if (res.ok) {
+          const data = await res.json();
+          setLogueado(true);
+          // Redirige según el tipo
+          if (tipo === 'clientes') {
+            router.push('/clientes/dashboard');
+          } else if (tipo === 'psicologos') {
+            router.push('/psicologos/dashboard');
+          }
+        } else {
+          setLogueado(false);
+        }
+      } catch (error) {
+        console.error('Error al verificar sesión:', error);
+        setLogueado(false);
+      } finally {
+        setCargando(false);
       }
     };
 
-    verificarToken();
-  }, [router, userType]);
+    verificarSesion();
+  }, [tipo, router]);
+
+  return { cargando, logueado };
 };
 
 export default useAuthRedirect;
