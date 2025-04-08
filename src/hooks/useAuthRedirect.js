@@ -1,9 +1,8 @@
 'use client';
-
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-const useAuthRedirect = (userType, setSesionActiva) => {
+const useAuthRedirect = (userType) => {
   const router = useRouter();
 
   useEffect(() => {
@@ -13,24 +12,16 @@ const useAuthRedirect = (userType, setSesionActiva) => {
           method: 'GET',
           credentials: 'include',
         });
-        //const data = await res.json();
-        if (res.ok === 'Sesión activa') {
-          setSesionActiva(true);
+        const data = await res.json();
 
-          // Solo redirigir si no estamos ya en el dashboard
-          if (!window.location.pathname.includes('/dashboard')) {
-            router.push(`/${userType}/dashboard`);
-          }
+        if (res.ok && data.email) {
+          router.push(`/${userType}/dashboard`);
         }
-      } catch (error) {
-        console.error('Error al verificar sesión:', error);
+      } catch (err) {
+        console.warn('Sesión no activa. Continuar en login.');
       }
     };
 
     verificarSesion();
-  }, [userType, router, setSesionActiva]);
+  }, [userType, router]);
 };
-
-export default useAuthRedirect;
-
-
