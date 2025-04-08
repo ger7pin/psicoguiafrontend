@@ -1,4 +1,3 @@
-// hooks/useAuthRedirect.js
 'use client';
 
 import { useEffect } from 'react';
@@ -12,12 +11,16 @@ const useAuthRedirect = (userType, setSesionActiva) => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
           method: 'GET',
-          credentials: 'include', // 👈 importante para cookies HttpOnly
+          credentials: 'include',
         });
         const data = await res.json();
         if (res.ok && data.message === 'Sesión activa') {
           setSesionActiva(true);
-          router.push(`/${userType}/dashboard`);
+
+          // Solo redirigir si no estamos ya en el dashboard
+          if (!window.location.pathname.includes('/dashboard')) {
+            router.push(`/${userType}/dashboard`);
+          }
         }
       } catch (error) {
         console.error('Error al verificar sesión:', error);
