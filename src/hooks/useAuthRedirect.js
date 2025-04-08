@@ -12,6 +12,7 @@ const useAuthRedirect = (tipo) => {
     const verificarSesion = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${tipo}/verify`, {
+          method: 'GET',
           credentials: 'include',
         });
 
