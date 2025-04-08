@@ -20,13 +20,15 @@ export default function Navbar() {
           credentials: 'include',
         });
         setLogueado(res.ok);
-      } catch {
+      } catch (error) {
+        console.error('❌ Error al verificar sesión:', error);
         setLogueado(false);
       }
     };
-
-    if (typeof window !== 'undefined') verificarSesion();
-  }, [tipo]);
+  
+    verificarSesion();
+  }, [tipo]); // <- solo se ejecuta cuando "tipo" cambia
+  
 
   const handleLogout = async () => {
     try {
