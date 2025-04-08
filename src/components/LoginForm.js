@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import useAuthRedirect from '@/hooks/useAuthRedirect';
 
 export default function LoginForm({ userType }) {
   const [email, setEmail] = useState('');
@@ -10,24 +11,8 @@ export default function LoginForm({ userType }) {
   const [sesionActiva, setSesionActiva] = useState(false);
   const router = useRouter();
 
-  useEffect(() => {
-    const verificarSesion = async () => {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
-          method: 'GET',
-          credentials: 'include', // 👈 ¡IMPORTANTE!
-        });
-        const data = await res.json();
-        if (res.ok && data.message === 'Sesión activa') {
-          setSesionActiva(true);
-        }
-      } catch (error) {
-        console.error('Error al verificar sesión:', error);
-      }
-    };
-
-    verificarSesion();
-  }, [userType]);
+  // 👇 Este hook hará la verificación y redirección si ya hay sesión
+  useAuthRedirect(userType, setSesionActiva);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -36,7 +21,7 @@ export default function LoginForm({ userType }) {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/login`, {
         method: 'POST',
-        credentials: 'include', // 👈 ¡Aquí también!
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
         },
@@ -54,11 +39,7 @@ export default function LoginForm({ userType }) {
         setSesionActiva(true);
       }
 
-      if (userType === 'clientes') {
-        router.push('/clientes/dashboard');
-      } else {
-        router.push('/psicologos/dashboard');
-      }
+      router.push(`/${userType}/dashboard`);
     } catch (err) {
       console.error('Error en login:', err);
       setError('Error al iniciar sesión');
@@ -103,3 +84,4 @@ export default function LoginForm({ userType }) {
     </form>
   );
 }
+

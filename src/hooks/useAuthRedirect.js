@@ -1,25 +1,33 @@
+// hooks/useAuthRedirect.js
 'use client';
 
-useEffect(() => {
-  const verificarSesion = async () => {
-    try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${tipo}/verify`, {
-        method: 'GET', // 👈 ¡IMPORTANTE!
-        credentials: 'include' // 👈 para que mande la cookie
-      });
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
-      if (res.ok) {
+const useAuthRedirect = (userType, setSesionActiva) => {
+  const router = useRouter();
+
+  useEffect(() => {
+    const verificarSesion = async () => {
+      try {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
+          method: 'GET',
+          credentials: 'include', // 👈 importante para cookies HttpOnly
+        });
         const data = await res.json();
-        if (data.message === 'Sesión activa') {
-          router.push(`/${tipo}/dashboard`); // redirige según el tipo
+        if (res.ok && data.message === 'Sesión activa') {
+          setSesionActiva(true);
+          router.push(`/${userType}/dashboard`);
         }
+      } catch (error) {
+        console.error('Error al verificar sesión:', error);
       }
-    } catch (err) {
-      console.error('Error al verificar sesión:', err);
-    }
-  };
+    };
 
-  verificarSesion();
-}, [tipo]);
+    verificarSesion();
+  }, [userType, router, setSesionActiva]);
+};
+
+export default useAuthRedirect;
 
 
