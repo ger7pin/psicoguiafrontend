@@ -13,7 +13,7 @@ export default function LoginForm({ userType }) {
   useEffect(() => {
     const verificarSesion = async () => {
       try {
-        const res = await fetch(`http://localhost:3001/${userType}/verify`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
           credentials: 'include'
         });
         if (res.ok) {
@@ -33,7 +33,7 @@ export default function LoginForm({ userType }) {
     setError('');
 
     try {
-      const res = await fetch(`http://localhost:3001/${userType}/login`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

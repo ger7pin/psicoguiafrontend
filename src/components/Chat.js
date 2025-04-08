@@ -4,11 +4,11 @@ import { io } from 'socket.io-client';
 export default function Chat({ emisorId, receptorId, tipoEmisor, token }) {
   const [mensaje, setMensaje] = useState('');
   const [mensajes, setMensajes] = useState([]);
-  const socket = io('http://localhost:3001');
+  const socket = io(`${process.env.NEXT_PUBLIC_BACKEND_URL}`);
 
   useEffect(() => {
     // Cargar historial
-    fetch(`http://localhost:3001/mensajes/${emisorId}/${receptorId}`, {
+    fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${emisorId}/${receptorId}`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },

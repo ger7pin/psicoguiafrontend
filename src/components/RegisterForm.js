@@ -21,7 +21,7 @@ export default function RegisterForm({ userType }) {
         : { email, password, nombre, telefono, especialidad: extraField };
 
     try {
-      const res = await fetch(`http://localhost:3001/${userType}/register`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

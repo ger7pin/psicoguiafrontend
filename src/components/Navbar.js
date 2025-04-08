@@ -16,7 +16,7 @@ export default function Navbar() {
   useEffect(() => {
     const verificarSesion = async () => {
       try {
-        const res = await fetch(`http://localhost:3001/${tipo}/verify`, {
+        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${tipo}/verify`, {
           credentials: 'include',
         });
         setLogueado(res.ok);
@@ -30,7 +30,7 @@ export default function Navbar() {
 
   const handleLogout = async () => {
     try {
-      await fetch(`http://localhost:3001/${tipo}/logout`, {
+      await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${tipo}/logout`, {
         method: 'POST',
         credentials: 'include',
       });
