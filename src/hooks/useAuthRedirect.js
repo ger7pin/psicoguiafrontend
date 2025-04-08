@@ -14,7 +14,7 @@ const useAuthRedirect = (userType, setSesionActiva) => {
           credentials: 'include',
         });
         const data = await res.json();
-        if (res.ok && data.message === 'Sesión activa') {
+        if (res.ok === 'Sesión activa') {
           setSesionActiva(true);
 
           // Solo redirigir si no estamos ya en el dashboard
