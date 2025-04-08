@@ -17,6 +17,7 @@ const useAuthRedirect = (tipo) => {
 
         if (res.ok) {
           const data = await res.json();
+          onsole.log('Error al verificar sesión:', data);
           setLogueado(true);
           // Redirige según el tipo
           if (tipo === 'clientes') {
