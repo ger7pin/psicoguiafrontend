@@ -20,7 +20,7 @@ export default function LoginForm({ userType }) {
           setSesionActiva(true);
           setAvisoSesion('Ya hay una sesión activa. Si deseas cambiar de usuario, por favor cierra la sesión actual primero.');
         }
-      } catch (error) {
+      } catch (_) {
         setSesionActiva(false);
       }
     };
@@ -46,10 +46,8 @@ export default function LoginForm({ userType }) {
         const errorText = await res.text();
         throw new Error(errorText || 'Error al iniciar sesión');
       }
-
-      const data = await res.json();
       router.push(`/${userType}/dashboard`);
-    } catch (err) {
+    } catch (_) {
       setError('Correo electrónico o contraseña incorrectos');
     }
   };

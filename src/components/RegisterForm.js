@@ -37,7 +37,7 @@ export default function RegisterForm({ userType }) {
       } else {
         setMensaje(data?.message || 'Error al registrar usuario');
       }
-    } catch (error) {
+    } catch (_) {
       setMensaje('Error de conexión con el servidor');
     }
   };
