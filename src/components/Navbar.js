@@ -19,7 +19,12 @@ export default function Navbar() {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${tipo}/verify`, {
           credentials: 'include',
         });
-        setLogueado(res.ok);
+        const data = await res.json();
+        if (res.ok && data.email) {
+          setLogueado(true);
+        } else {
+          setLogueado(false);
+        }
       } catch (error) {
         console.error('❌ Error al verificar sesión:', error);
         setLogueado(false);
@@ -27,7 +32,8 @@ export default function Navbar() {
     };
   
     verificarSesion();
-  }, [tipo]); // <- solo se ejecuta cuando "tipo" cambia
+  }, [tipo]);
+  
   
 
   const handleLogout = async () => {
