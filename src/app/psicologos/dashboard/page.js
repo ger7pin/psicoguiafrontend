@@ -1,60 +1,66 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import useAuthUser from '@/hooks/useAuthUser';
 import Navbar from '@/components/Navbar';
-import useAuthRedirect from '@/hooks/useAuthRedirect';
-import Chat from '@/components/Chat';
 
-export default function PsicologoDashboard() {
-  const [email, setEmail] = useState('');
-  const [userId, setUserId] = useState(null);
-  const router = useRouter();
-
-  useAuthRedirect('/psicologos/login');
+export default function DashboardPsicologo() {
+  const { psicologo, cargando } = useAuthUser('psicologo');
+  const [contactos, setContactos] = useState([]);
 
   useEffect(() => {
-    const verificarToken = async () => {
-      try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/psicologos/verify`, {
-          method: 'GET',
-          credentials: 'include',
-        });
+    if (!cargando && psicologo) {
+      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/contactos`, {
+        credentials: 'include'
+      })
+        .then(res => res.json())
+        .then(data => setContactos(data))
+        .catch(err => console.error('Error al obtener contactos:', err));
+    }
+  }, [psicologo, cargando]);
 
-        if (!res.ok) throw new Error('No autorizado');
+  const conectarGoogleCalendar = () => {
+    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/google/auth?rol=psicologo`;
+  };
 
-        const data = await res.json();
-        setEmail(data.email);
-        setUserId(data.id); // Guardamos el ID para el chat
-
-      } catch (err) {
-        console.error('Error de autenticación:', err);
-        router.push('/psicologos/login');
-      }
-    };
-
-    verificarToken();
-  }, []);
+  if (cargando || !psicologo) return <p>Cargando...</p>;
 
   return (
     <>
       <Navbar />
-      <div className="min-h-screen flex items-center justify-center bg-indigo-50 px-4">
-        <div className="bg-white p-8 rounded-xl shadow-lg text-center">
-          <h1 className="text-2xl font-bold mb-4 text-indigo-600">Bienvenido, psicólogo</h1>
-          <p className="text-gray-700">Tu correo electrónico es: <strong>{email}</strong></p>
+      <div className="p-6">
+        <h1 className="text-2xl font-bold mb-4">Bienvenido/a, {psicologo.nombre}</h1>
 
-          {userId && (
-            <Chat
-              emisorId={userId}
-              receptorId={3} // 👈 Reemplaza por el ID real del cliente con el que se está chateando
-              tipoEmisor="psicologo"
-              token="" // Ya no usamos el token aquí directamente
-            />
-          )}
+        {/* Botón para conectar Google Calendar */}
+        <div className="mb-6">
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
+            onClick={conectarGoogleCalendar}
+          >
+            Conectar con Google Calendar
+          </button>
         </div>
+
+        {/* Lista de contactos */}
+        <section>
+          <h2 className="text-xl font-semibold mb-3">Mis contactos</h2>
+          <ul>
+            {contactos.length === 0 ? (
+              <p>No tienes contactos aún.</p>
+            ) : (
+              contactos.map((c) => {
+                const cliente = c.cliente;
+                return (
+                  <li key={c.id} className="flex items-center gap-4 mb-3">
+                    <img src={cliente.imagen} alt="avatar" className="w-10 h-10 rounded-full" />
+                    <span className="text-lg">{cliente.nombre}</span>
+                  </li>
+                );
+              })
+            )}
+          </ul>
+        </section>
       </div>
     </>
   );
 }
-
