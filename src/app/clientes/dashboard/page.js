@@ -16,7 +16,7 @@ export default function DashboardCliente() {
     psicologo_id: '',
     fecha: '',
     hora: '',
-    motivo: ''
+    descripcion: ''
   });
 
   // Cargar psicólogos, citas y contactos al inicio
@@ -68,13 +68,13 @@ export default function DashboardCliente() {
     e.preventDefault();
     if (!validarFechaHora()) return;
 
-    const fechaHora = `${formulario.fecha} ${formulario.hora}:00.000Z`;
+    const fechaHora = `${formulario.fecha} ${formulario.hora}:00.000Z`; // Combina la fecha y hora en el formato adecuado
     const datos = { ...formulario, fecha_hora: fechaHora, cliente_id: cliente?.id };
 
     try {
       const nueva = await crearCita(datos);
       setMensaje('✅ Cita reservada correctamente');
-      setFormulario({ psicologo_id: '', fecha: '', hora: '', motivo: '' });
+      setFormulario({ psicologo_id: '', fecha: '', hora: '', descripcion: '' });
       setCitas(prev => [...prev, nueva.cita]); // añadir la nueva cita
     } catch (error) {
       console.error('❌ Error al reservar cita:', error);
@@ -141,10 +141,10 @@ export default function DashboardCliente() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium">Motivo</label>
+              <label className="block text-sm font-medium">descripcion</label>
               <textarea
-                name="motivo"
-                value={formulario.motivo}
+                name="descripcion"
+                value={formulario.descripcion}
                 onChange={handleChange}
                 className="w-full border px-3 py-2 rounded-md"
               />
@@ -167,30 +167,30 @@ export default function DashboardCliente() {
             <p className="text-gray-600">No tienes citas registradas aún.</p>
           ) : (
             <table className="w-full table-auto text-left border-collapse">
-              <thead>
-                <tr className="border-b">
-                  <th className="py-2 px-3">Fecha</th>
-                  <th className="py-2 px-3">Hora</th>
-                  <th className="py-2 px-3">Psicólogo</th>
-                  <th className="py-2 px-3">Motivo</th>
-                </tr>
-              </thead>
-              <tbody>
-                {citas.map((cita) => {
-                  const psico = psicologos.find(p => p.id === cita.psicologo_id);
-                  return (
-                    <tr key={cita.id} className="border-b hover:bg-gray-50">
-                      <td className="py-2 px-3">{cita.fecha}</td>
-                      <td className="py-2 px-3">{cita.hora}</td>
-                      <td className="py-2 px-3">{psico?.nombre || `ID ${cita.psicologo_id}`}</td>
-                      <td className="py-2 px-3">{cita.motivo}</td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+  <thead>
+    <tr className="border-b">
+      <th className="py-2 px-3">Fecha y Hora</th>
+      <th className="py-2 px-3">Psicólogo</th>
+      <th className="py-2 px-3">descripcion</th>
+    </tr>
+  </thead>
+  <tbody>
+    {citas.map((cita) => {
+      const psico = psicologos.find(p => p.id === cita.psicologo_id);
+      return (
+        <tr key={cita.id} className="border-b hover:bg-gray-50">
+          <td className="py-2 px-3">{new Date(cita.fecha_hora).toLocaleString()}</td>
+          <td className="py-2 px-3">{psico?.nombre || `ID ${cita.psicologo_id}`}</td>
+          <td className="py-2 px-3">{cita.descripcion}</td>
+        </tr>
+      );
+    })}
+  </tbody>
+</table>
+
           )}
         </div>
+
 
         {/* Sección de contactos */}
         <div className="bg-white shadow p-6 rounded-xl border mt-10">

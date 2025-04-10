@@ -42,7 +42,7 @@ export default function DashboardPsicologo() {
                   <th className="py-2 px-3">Fecha</th>
                   <th className="py-2 px-3">Hora</th>
                   <th className="py-2 px-3">Cliente</th>
-                  <th className="py-2 px-3">Motivo</th>
+                  <th className="py-2 px-3">descripcion</th>
                 </tr>
               </thead>
               <tbody>
@@ -51,7 +51,7 @@ export default function DashboardPsicologo() {
                     <td className="py-2 px-3">{cita.fecha}</td>
                     <td className="py-2 px-3">{cita.hora}</td>
                     <td className="py-2 px-3">{cita.cliente?.nombre || `ID ${cita.cliente_id}`}</td>
-                    <td className="py-2 px-3">{cita.motivo}</td>
+                    <td className="py-2 px-3">{cita.descripcion}</td>
                   </tr>
                 ))}
               </tbody>
