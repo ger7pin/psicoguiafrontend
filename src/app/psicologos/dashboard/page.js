@@ -1,66 +1,65 @@
 'use client';
-
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import useAuthUser from '@/hooks/useAuthUser';
 import Navbar from '@/components/Navbar';
+import { obtenerCitas } from '@/services/citasService';
 
 export default function DashboardPsicologo() {
-  const { psicologo, cargando } = useAuthUser('psicologo');
-  const [contactos, setContactos] = useState([]);
+  const { cliente: psicologo, cargando } = useAuthUser('psicologos');
+  const [citas, setCitas] = useState([]);
 
   useEffect(() => {
-    if (!cargando && psicologo) {
-      fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/contactos`, {
-        credentials: 'include'
-      })
-        .then(res => res.json())
-        .then(data => setContactos(data))
-        .catch(err => console.error('Error al obtener contactos:', err));
-    }
-  }, [psicologo, cargando]);
+    if (!psicologo?.id) return;
+    const cargarCitas = async () => {
+      try {
+        const todas = await obtenerCitas();
+        const propias = todas.filter(c => c.psicologo_id === psicologo.id);
+        setCitas(propias);
+      } catch (err) {
+        console.error('❌ Error al cargar citas:', err);
+      }
+    };
+    cargarCitas();
+  }, [psicologo]);
 
-  const conectarGoogleCalendar = () => {
-    window.location.href = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/google/auth?rol=psicologo`;
-  };
-
-  if (cargando || !psicologo) return <p>Cargando...</p>;
+  if (cargando) return <div>Cargando...</div>;
 
   return (
     <>
       <Navbar />
-      <div className="p-6">
-        <h1 className="text-2xl font-bold mb-4">Bienvenido/a, {psicologo.nombre}</h1>
+      <div className="p-6 max-w-5xl mx-auto">
+        <h1 className="text-3xl font-bold mb-6">Hola, {psicologo?.nombre}</h1>
 
-        {/* Botón para conectar Google Calendar */}
-        <div className="mb-6">
-          <button
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition"
-            onClick={conectarGoogleCalendar}
-          >
-            Conectar con Google Calendar
-          </button>
+        <div className="bg-white shadow p-6 rounded-xl border mt-4">
+          <h2 className="text-xl font-semibold mb-4">Mis citas agendadas</h2>
+
+          {citas.length === 0 ? (
+            <p className="text-gray-600">Aún no tienes citas programadas.</p>
+          ) : (
+            <table className="w-full table-auto text-left border-collapse">
+              <thead>
+                <tr className="border-b">
+                  <th className="py-2 px-3">Fecha</th>
+                  <th className="py-2 px-3">Hora</th>
+                  <th className="py-2 px-3">Cliente</th>
+                  <th className="py-2 px-3">Motivo</th>
+                </tr>
+              </thead>
+              <tbody>
+                {citas.map(cita => (
+                  <tr key={cita.id} className="border-b hover:bg-gray-50">
+                    <td className="py-2 px-3">{cita.fecha}</td>
+                    <td className="py-2 px-3">{cita.hora}</td>
+                    <td className="py-2 px-3">{cita.cliente?.nombre || `ID ${cita.cliente_id}`}</td>
+                    <td className="py-2 px-3">{cita.motivo}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
-
-        {/* Lista de contactos */}
-        <section>
-          <h2 className="text-xl font-semibold mb-3">Mis contactos</h2>
-          <ul>
-            {contactos.length === 0 ? (
-              <p>No tienes contactos aún.</p>
-            ) : (
-              contactos.map((c) => {
-                const cliente = c.cliente;
-                return (
-                  <li key={c.id} className="flex items-center gap-4 mb-3">
-                    <img src={cliente.imagen} alt="avatar" className="w-10 h-10 rounded-full" />
-                    <span className="text-lg">{cliente.nombre}</span>
-                  </li>
-                );
-              })
-            )}
-          </ul>
-        </section>
       </div>
     </>
   );
 }
+
