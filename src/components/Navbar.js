@@ -33,8 +33,6 @@ export default function Navbar() {
   
     verificarSesion();
   }, [tipo]);
-  
-  
 
   const handleLogout = async () => {
     try {
@@ -46,6 +44,15 @@ export default function Navbar() {
       router.push('/');
     } catch (error) {
       console.error('Error cerrando sesión:', error);
+    }
+  };
+
+  // Lógica para redirigir al dashboard correspondiente
+  const handleDashboardRedirect = () => {
+    if (tipo === 'clientes') {
+      router.push('/clientes/dashboard');
+    } else if (tipo === 'psicologos') {
+      router.push('/psicologos/dashboard');
     }
   };
 
@@ -64,9 +71,12 @@ export default function Navbar() {
           {/* Navegación escritorio */}
           <div className="hidden md:flex items-center space-x-4">
             {logueado ? (
-              <FIRButton onClick={handleLogout} variant="outline">
-                Cerrar sesión
-              </FIRButton>
+              <>
+                <FIRButton onClick={handleDashboardRedirect} variant="outline">Dashboard</FIRButton> {/* Botón Dashboard */}
+                <FIRButton onClick={handleLogout} variant="outline">
+                  Cerrar sesión
+                </FIRButton>
+              </>
             ) : (
               <>
                 <FIRButton href="/clientes/login" variant="secondary">
@@ -103,9 +113,12 @@ export default function Navbar() {
         {isMenuOpen && (
           <div className="md:hidden px-2 pt-2 pb-3 space-y-2">
             {logueado ? (
-              <FIRButton onClick={handleLogout} className="w-full text-left" variant="outline">
-                Cerrar sesión
-              </FIRButton>
+              <>
+                <FIRButton onClick={handleDashboardRedirect} className="w-full text-left" variant="outline">Dashboard</FIRButton> {/* Botón Dashboard */}
+                <FIRButton onClick={handleLogout} className="w-full text-left" variant="outline">
+                  Cerrar sesión
+                </FIRButton>
+              </>
             ) : (
               <>
                 <FIRButton href="/clientes/login" className="w-full text-left" variant="secondary">
