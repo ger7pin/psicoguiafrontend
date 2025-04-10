@@ -54,10 +54,24 @@ export default function DashboardCliente() {
     setFormulario({ ...formulario, [e.target.name]: e.target.value });
   };
 
+  const validarFechaHora = () => {
+    const now = new Date();
+    const fechaHora = new Date(`${formulario.fecha}T${formulario.hora}`);
+    if (fechaHora < now) {
+      setMensaje('❌ La fecha y hora no pueden ser en el pasado.');
+      return false;
+    }
+    return true;
+  };
+
   const reservarCita = async (e) => {
     e.preventDefault();
+    if (!validarFechaHora()) return;
+
+    const fechaHora = `${formulario.fecha} ${formulario.hora}:00.000Z`;
+    const datos = { ...formulario, fecha_hora: fechaHora, cliente_id: cliente?.id };
+
     try {
-      const datos = { ...formulario, cliente_id: cliente?.id };
       const nueva = await crearCita(datos);
       setMensaje('✅ Cita reservada correctamente');
       setFormulario({ psicologo_id: '', fecha: '', hora: '', motivo: '' });
