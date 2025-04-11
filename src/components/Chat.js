@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import EmojiPicker from 'emoji-picker-react';
 import { Sonner } from 'sonner';
@@ -15,6 +15,25 @@ const Chat = ({ contacto }) => {
   const chatRef = useRef(null);
   const timeoutRef = useRef(null);
   const { user, token } = useAuthUser();
+
+  const handleUsuarioEscribiendo = useCallback((data) => {
+    if (data.emisorId === contacto.id) {
+      setContactoEscribiendo(data.escribiendo);
+    }
+  }, [contacto?.id]);
+
+  const cargarMensajes = useCallback(async () => {
+    try {
+      const response = await fetch(`/api/mensajes?contactoId=${contacto.id}`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      const data = await response.json();
+      setMensajes(data);
+    } catch (error) {
+      console.error('Error al cargar mensajes:', error);
+      Sonner.error('Error al cargar los mensajes');
+    }
+  }, [contacto?.id, token]);
 
   useEffect(() => {
     const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL, {
@@ -33,32 +52,19 @@ const Chat = ({ contacto }) => {
     setSocket(newSocket);
 
     return () => newSocket.close();
-  }, [token]);
+  }, [token, handleUsuarioEscribiendo]);
 
   useEffect(() => {
     if (contacto?.id) {
       cargarMensajes();
     }
-  }, [contacto]);
+  }, [contacto, cargarMensajes]);
 
   useEffect(() => {
     if (chatRef.current) {
       chatRef.current.scrollTop = chatRef.current.scrollHeight;
     }
   }, [mensajes]);
-
-  const cargarMensajes = async () => {
-    try {
-      const response = await fetch(`/api/mensajes?contactoId=${contacto.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await response.json();
-      setMensajes(data);
-    } catch (error) {
-      console.error('Error al cargar mensajes:', error);
-      Sonner.error('Error al cargar los mensajes');
-    }
-  };
 
   const handleNuevoMensaje = (data) => {
     setMensajes(prev => [...prev, data.mensaje]);
@@ -68,12 +74,6 @@ const Chat = ({ contacto }) => {
         body: data.mensaje.contenido,
         icon: '/icons/chat-icon.png'
       });
-    }
-  };
-
-  const handleUsuarioEscribiendo = (data) => {
-    if (data.emisorId === contacto.id) {
-      setContactoEscribiendo(data.escribiendo);
     }
   };
 
@@ -138,36 +138,6 @@ const Chat = ({ contacto }) => {
     } catch (error) {
       console.error('Error:', error);
       Sonner.error('Error al enviar el mensaje');
-    }
-  };
-
-  const eliminarMensaje = async (mensajeId) => {
-    try {
-      await fetch(`/api/mensajes/${mensajeId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setMensajes(prev => prev.filter(m => m.id !== mensajeId));
-    } catch (error) {
-      console.error('Error:', error);
-      Sonner.error('Error al eliminar el mensaje');
-    }
-  };
-
-  const agregarReaccion = async (mensajeId, reaccion) => {
-    try {
-      await fetch(`/api/mensajes/${mensajeId}/reacciones`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ reaccion })
-      });
-    } catch (error) {
-      console.error('Error:', error);
-      Sonner.error('Error al agregar reacción');
     }
   };
 
