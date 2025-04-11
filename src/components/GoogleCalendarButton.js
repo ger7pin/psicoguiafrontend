@@ -3,7 +3,9 @@
 
 export default function GoogleCalendarButton({ rol = 'cliente' }) {
   const handleEnlazarGoogle = () => {
-    window.location.href = `/api/routes/google/auth?rol=${rol}`;
+    // Usar la URL correcta del backend
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    window.location.href = `${backendUrl}/api/google/auth?rol=${rol}`;
   };
 
   return (
@@ -17,3 +19,4 @@ export default function GoogleCalendarButton({ rol = 'cliente' }) {
     </div>
   );
 }
+
