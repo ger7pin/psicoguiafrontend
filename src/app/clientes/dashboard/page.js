@@ -73,12 +73,7 @@ export default function DashboardCliente() {
     return '';
   };
 
-  // Estilo para los días marcados con cita
-  const markedDateStyle = {
-    backgroundColor: 'lightgray', // Color de fondo gris claro
-    borderRadius: '50%',
-    color: 'black', // Color de texto
-  };
+  
 
   const handleChange = (e) => {
     setFormulario({ ...formulario, [e.target.name]: e.target.value });
