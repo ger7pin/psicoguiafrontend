@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 
 const useAuthUser = (userType) => {
   const [cliente, setCliente] = useState(null);
+  const [token, setToken] = useState(null);
   const [cargando, setCargando] = useState(true);
   const router = useRouter();
 
@@ -17,7 +18,8 @@ const useAuthUser = (userType) => {
         const data = await res.json();
 
         if (res.ok && data.email) {
-          setCliente(data); // ✅ corregido
+          setCliente(data);
+          setToken(data.token); // Guardar el token
         } else {
           router.push(`/${userType}/login`);
         }
@@ -32,7 +34,7 @@ const useAuthUser = (userType) => {
     verificarSesion();
   }, [userType, router]);
 
-  return { cliente, cargando };
+  return { cliente, cargando, token };
 };
 
 export default useAuthUser;

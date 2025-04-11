@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { toast } from 'sonner';
 import useAuthUser from '../hooks/useAuthUser';
 
@@ -6,9 +6,9 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
   const [contacts, setContacts] = useState([]);
   const [blockedContacts, setBlockedContacts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const { token } = useAuthUser();
+  const { token } = useAuthUser('clientes'); // Agregar el tipo de usuario
 
-  const loadContacts = async () => {
+  const loadContacts = useCallback(async () => {
     try {
       const response = await fetch('/api/contactos', {
         headers: { Authorization: `Bearer ${token}` }
@@ -19,9 +19,9 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
       console.error('Error al cargar contactos:', error);
       toast.error('Error al cargar la lista de contactos');
     }
-  };
+  }, [token]);
 
-  const loadBlockedContacts = async () => {
+  const loadBlockedContacts = useCallback(async () => {
     try {
       const response = await fetch('/api/contactos/bloqueados', {
         headers: { Authorization: `Bearer ${token}` }
@@ -31,16 +31,16 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
     } catch (error) {
       console.error('Error al cargar contactos bloqueados:', error);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
     if (token) {
       loadContacts();
       loadBlockedContacts();
     }
-  }, [token]);
+  }, [token, loadContacts, loadBlockedContacts]);
 
-  const handleBlock = async (contactId) => {
+  const handleBlock = useCallback(async (contactId) => {
     try {
       await fetch('/api/contactos/bloquear', {
         method: 'POST',
@@ -57,9 +57,9 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
       console.error('Error al bloquear contacto:', error);
       toast.error('Error al bloquear el contacto');
     }
-  };
+  }, [token]);
 
-  const handleUnblock = async (contactId) => {
+  const handleUnblock = useCallback(async (contactId) => {
     try {
       await fetch(`/api/contactos/desbloquear/${contactId}`, {
         method: 'DELETE',
@@ -72,7 +72,7 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
       console.error('Error al desbloquear contacto:', error);
       toast.error('Error al desbloquear el contacto');
     }
-  };
+  }, [token]);
 
   const filteredContacts = contacts.filter(contact =>
     contact.nombre.toLowerCase().includes(searchTerm.toLowerCase())
@@ -123,9 +123,11 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                blockedContacts.includes(contact.id)
-                  ? handleUnblock(contact.id)
-                  : handleBlock(contact.id);
+                if (blockedContacts.includes(contact.id)) {
+                  handleUnblock(contact.id);
+                } else {
+                  handleBlock(contact.id);
+                }
               }}
               className={`p-2 rounded-lg ${
                 blockedContacts.includes(contact.id)
