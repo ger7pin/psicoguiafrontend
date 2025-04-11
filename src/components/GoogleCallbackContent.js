@@ -32,8 +32,6 @@ export default function GoogleCallbackContent() {
           throw new Error('Error al procesar la autenticación');
         }
 
-        const data = await response.json();
-        
         // Redirigir al dashboard correspondiente
         router.push(`/${state}/dashboard?google_connected=true`);
       } catch (error) {
