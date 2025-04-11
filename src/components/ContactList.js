@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Sonner } from 'sonner';
+import { toast } from 'sonner';
 import { useAuthUser } from '../hooks/useAuthUser';
 
 const ContactList = ({ onSelectContact, selectedContact }) => {
@@ -7,11 +7,6 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
   const [blockedContacts, setBlockedContacts] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const { token } = useAuthUser();
-
-  useEffect(() => {
-    loadContacts();
-    loadBlockedContacts();
-  }, []);
 
   const loadContacts = async () => {
     try {
@@ -22,7 +17,7 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
       setContacts(data);
     } catch (error) {
       console.error('Error al cargar contactos:', error);
-      Sonner.error('Error al cargar la lista de contactos');
+      toast.error('Error al cargar la lista de contactos');
     }
   };
 
@@ -38,6 +33,13 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
     }
   };
 
+  useEffect(() => {
+    if (token) {
+      loadContacts();
+      loadBlockedContacts();
+    }
+  }, [token]);
+
   const handleBlock = async (contactId) => {
     try {
       await fetch('/api/contactos/bloquear', {
@@ -50,10 +52,10 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
       });
 
       setBlockedContacts(prev => [...prev, contactId]);
-      Sonner.success('Contacto bloqueado exitosamente');
+      toast.success('Contacto bloqueado exitosamente');
     } catch (error) {
       console.error('Error al bloquear contacto:', error);
-      Sonner.error('Error al bloquear el contacto');
+      toast.error('Error al bloquear el contacto');
     }
   };
 
@@ -65,10 +67,10 @@ const ContactList = ({ onSelectContact, selectedContact }) => {
       });
 
       setBlockedContacts(prev => prev.filter(id => id !== contactId));
-      Sonner.success('Contacto desbloqueado exitosamente');
+      toast.success('Contacto desbloqueado exitosamente');
     } catch (error) {
       console.error('Error al desbloquear contacto:', error);
-      Sonner.error('Error al desbloquear el contacto');
+      toast.error('Error al desbloquear el contacto');
     }
   };
 
