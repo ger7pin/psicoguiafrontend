@@ -3,18 +3,19 @@ import { io } from 'socket.io-client';
 import EmojiPicker from 'emoji-picker-react';
 import { Sonner } from 'sonner';
 import { useAuthUser } from '../hooks/useAuthUser';
+import Image from 'next/image'; // Importación añadida
 
 const Chat = ({ contacto }) => {
   const [mensajes, setMensajes] = useState([]);
   const [mensaje, setMensaje] = useState('');
   const [archivo, setArchivo] = useState(null);
-  const [escribiendo, setEscribiendo] = useState(false);
   const [mostrarEmojis, setMostrarEmojis] = useState(false);
   const [contactoEscribiendo, setContactoEscribiendo] = useState(false);
   const [socket, setSocket] = useState(null);
   const chatRef = useRef(null);
   const timeoutRef = useRef(null);
   const { user, token } = useAuthUser();
+
   useEffect(() => {
     const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL, {
       auth: { token }
@@ -196,9 +197,12 @@ const Chat = ({ contacto }) => {
               {msg.archivoUrl && (
                 <div className="mt-2">
                   {msg.archivoTipo.startsWith('image/') ? (
-                    <img 
+                    <Image 
                       src={msg.archivoUrl} 
                       alt="Imagen adjunta"
+                      width={500} 
+                      height={300} 
+                      priority 
                       className="max-w-full rounded"
                     />
                   ) : (

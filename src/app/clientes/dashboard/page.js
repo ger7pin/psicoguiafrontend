@@ -1,6 +1,5 @@
 'use client';
 import React, { useState, useEffect } from 'react';
-import { Sonner } from 'sonner';
 import Chat from '@/components/Chat';
 import ContactList from '@/components/ContactList';
 import { useAuthUser } from '@/hooks/useAuthUser';
