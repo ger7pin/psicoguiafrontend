@@ -95,33 +95,6 @@ export default function DashboardCliente() {
     }
   };
 
-  const handleSelectDate = (date) => {
-    setSelectedDate(date);
-    const cita = citas.find(
-      (cita) =>
-        new Date(cita.fecha_hora).toDateString() === date.toDateString()
-    );
-    if (cita) {
-      const psicologo = psicologos.find(p => p.id === cita.psicologo_id);
-      setCitaDetails({
-        ...cita,
-        psicologo_nombre: psicologo?.nombre || `ID ${cita.psicologo_id}`
-      });
-    } else {
-      setCitaDetails(null);
-    }
-  };
-
-  const getTileClassName = ({ date, view }) => {
-    if (
-      view === 'month' &&
-      citas.some(cita => new Date(cita.fecha_hora).toDateString() === date.toDateString())
-    ) {
-      return 'bg-gray-300 rounded-full';
-    }
-    return null;
-  };
-
   if (cargando) return <div className="text-center mt-10">Cargando...</div>;
 
   return (
