@@ -243,7 +243,7 @@ export default function DashboardCliente() {
                 <h2 className="text-xl font-semibold text-primary mb-4">Detalles de la Cita</h2>
                 <div className="space-y-2">
                   <p className="text-muted-foreground">
-                    <span className="font-medium text-primary">Psicólogo:</span> {citaDetails.psicologo_nombre}
+                    <span className="font-medium text-primary">Psicólogo:</span> {citaDetails.psicologo.nombre}
                   </p>
                   <p className="text-muted-foreground">
                     <span className="font-medium text-primary">Fecha y Hora:</span> {new Date(citaDetails.fecha_hora).toLocaleString()}
