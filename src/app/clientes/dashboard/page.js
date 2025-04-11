@@ -4,6 +4,7 @@ import { Sonner } from 'sonner';
 import Chat from '@/components/Chat';
 import ContactList from '@/components/ContactList';
 import { useAuthUser } from '@/hooks/useAuthUser';
+
 export default function Dashboard() {
   const [selectedContact, setSelectedContact] = useState(null);
   const [showChat, setShowChat] = useState(false);
@@ -41,6 +42,7 @@ export default function Dashboard() {
     setSelectedContact(contact);
     setShowChat(true);
   };
+
   return (
     <div className="flex flex-col h-screen bg-gray-100">
       <main className="flex-1 container mx-auto p-4">
