@@ -225,7 +225,7 @@ export default function DashboardCliente() {
                 value={selectedDate}
                 className="w-full p-4"
                 tileClassName={getTileClassName}
-                tileContent={({ date, view }) => {
+                tileContent={({ date}) => {
                   const citaDelDia = citas.find(cita => 
                     new Date(cita.fecha_hora).toDateString() === date.toDateString()
                   );
