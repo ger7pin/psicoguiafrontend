@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { useAuthUser } from '../hooks/useAuthUser';
+import useAuthUser from '../hooks/useAuthUser';
 
 const ContactList = ({ onSelectContact, selectedContact }) => {
   const [contacts, setContacts] = useState([]);
