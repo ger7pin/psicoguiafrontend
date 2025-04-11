@@ -1,10 +1,9 @@
-// src/components/GoogleCalendarButton.js
 'use client';
 
 export default function GoogleCalendarButton({ rol = 'cliente' }) {
   const handleEnlazarGoogle = () => {
-    // Usar la URL correcta del backend
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL;
+    // Asegúrate de que la URL del backend esté correctamente formada
+    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, '');
     window.location.href = `${backendUrl}/api/google/auth?rol=${rol}`;
   };
 
@@ -19,4 +18,3 @@ export default function GoogleCalendarButton({ rol = 'cliente' }) {
     </div>
   );
 }
-
