@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 
 const useAuthUser = (userType) => {
   const [cliente, setCliente] = useState(null);
-  const [token, setToken] = useState(null);
+  
   const [cargando, setCargando] = useState(true);
   const router = useRouter();
 
