@@ -1,15 +1,46 @@
 'use client';
 
-export default function GoogleCalendarButton({ rol = 'cliente' }) {
-  const handleEnlazarGoogle = () => {
-    const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL?.replace(/\/$/, '');
-    window.location.href = `${backendUrl}/api/google/auth?rol=${rol}`;
+import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+
+export default function GoogleCalendarButton() {
+  const [isConnected, setIsConnected] = useState(false);
+  const router = useRouter();
+
+  useEffect(() => {
+    // Verificar si hay un parámetro de conexión en la URL
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('google_connected') === 'true') {
+        setIsConnected(true);
+        // Corregir la URL de redirección
+        router.replace('/clientes/dashboard'); // Note el plural en "clientes"
+      }
+    }
+  }, [router]);
+
+  const handleConnect = async () => {
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/google/auth`, {
+        credentials: 'include'
+      });
+      
+      if (!response.ok) throw new Error('Error al conectar con Google Calendar');
+      
+      const data = await response.json();
+      // Redirigir al usuario a la URL de autorización de Google
+      window.location.href = data.authUrl;
+      
+    } catch (error) {
+      console.error('Error:', error);
+      // Aquí podrías mostrar un mensaje de error al usuario
+    }
   };
 
   return (
     <div className="mt-6">
       <button
-        onClick={handleEnlazarGoogle}
+        onClick={handleConnect}
         className="w-full flex items-center justify-center gap-3 
                  bg-gradient-to-r from-blue-600 to-blue-800
                  hover:from-blue-700 hover:to-blue-900
