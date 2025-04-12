@@ -11,7 +11,7 @@ import GoogleCalendarButton from '@/components/GoogleCalendarButton';
 import Chat from '@/components/Chat';
 
 export default function DashboardPsicologo() {
-  const { cliente: psicologo, cargando, token } = useAuthUser('psicologos');
+  const { cliente: psicologo, cargando } = useAuthUser('psicologos');
   const [citas, setCitas] = useState([]);
   const [contactos, setContactos] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date());
