@@ -4,8 +4,8 @@ import { toast } from 'sonner';
 import useAuthUser from '../hooks/useAuthUser';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { initializeChat, updateChatMessage, enviarMensaje } from '../services/chatService';
-import { initSocket, getSocket, subscribeToMessages, subscribeToTypingStatus, sendTypingStatus } from '../utils/socketService';
+import { initializeChat, updateChatMessage } from '../services/chatService';
+import { initSocket, subscribeToMessages, subscribeToTypingStatus, sendTypingStatus } from '../utils/socketService';
 
 const Chat = ({ clienteId, psicologoId, onClose }) => {
   const [mensajes, setMensajes] = useState([]);
@@ -123,13 +123,23 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
       };
 
       // Guardar mensaje en Firebase
-      const docRef = await addDoc(collection(db, 'chats', chatId, 'messages'), messageData);
+      await addDoc(collection(db, 'chats', chatId, 'messages'), messageData);
 
       // Actualizar último mensaje en el documento principal del chat
       await updateChatMessage(chatId, messageData);
       
       // Enviar mensaje a través de Socket.io para comunicación en tiempo real
-      await enviarMensaje(chatId, mensaje, psicologoId, cliente.id);
+      // Usar la función directamente del contexto actual
+      const socket = initSocket(token);
+      if (socket && socket.connected) {
+        socket.emit('chat message', {
+          chatId,
+          content: mensaje,
+          senderId: cliente.id,
+          receptorId: psicologoId,
+          timestamp: new Date()
+        });
+      }
       
       setMensaje('');
       setArchivo(null);
