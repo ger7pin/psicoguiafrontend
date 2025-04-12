@@ -13,16 +13,19 @@ const useAuthUser = (userType) => {
 
     const verificarSesion = async () => {
       try {
+        console.log('Verificando sesión...');
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
           method: 'GET',
           credentials: 'include',
           headers: {
             'Accept': 'application/json',
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-cache'  // Evitar caché
           }
         });
 
         const data = await res.json();
+        console.log('Respuesta verify:', data);
 
         if (!isMounted) return;
 
@@ -31,9 +34,10 @@ const useAuthUser = (userType) => {
           setToken(data.token);
           setCargando(false);
         } else {
-          // Solo redirigir si estamos en una ruta protegida
           if (window.location.pathname.includes('dashboard')) {
-            router.replace(`/${userType}/login`);
+            console.log('Redirigiendo a login...');
+            // Usar replace y shallow para optimizar la redirección
+            router.replace(`/${userType}/login`, undefined, { shallow: true });
           }
           setCargando(false);
         }
@@ -41,9 +45,8 @@ const useAuthUser = (userType) => {
         console.error('Error verificando sesión:', error);
         if (isMounted) {
           setCargando(false);
-          // Solo redirigir si estamos en una ruta protegida
           if (window.location.pathname.includes('dashboard')) {
-            router.replace(`/${userType}/login`);
+            router.replace(`/${userType}/login`, undefined, { shallow: true });
           }
         }
       }

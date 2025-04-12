@@ -14,6 +14,7 @@ export default function LoginForm({ userType }) {
     setError('');
 
     try {
+      console.log('Iniciando login...');
       const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/login`, {
         method: 'POST',
         credentials: 'include',
@@ -22,15 +23,27 @@ export default function LoginForm({ userType }) {
       });
 
       const data = await res.json();
+      console.log('Respuesta login:', data);
+
       if (!res.ok) {
         setError(data.message || 'Error al iniciar sesión');
         return;
       }
 
-      router.push(`/${userType}/dashboard`);
+      // Verificar que la sesión se estableció correctamente
+      const verifyRes = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
+        credentials: 'include'
+      });
+      
+      if (verifyRes.ok) {
+        // Usar replace: true para evitar problemas con el historial
+        router.push(`/${userType}/dashboard`, { replace: true });
+      } else {
+        setError('Error al verificar la sesión');
+      }
     } catch (err) {
       console.error('Login error:', err);
-      setError('Error al iniciar sesión');
+      setError('Error de conexión');
     }
   };
 
