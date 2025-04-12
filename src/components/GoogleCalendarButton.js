@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 
-export default function GoogleCalendarButton({ isConnected, onConnectionChange }) {
+export default function GoogleCalendarButton({ isConnected, onConnectionChange, userType = 'cliente' }) {
   const [loading, setLoading] = useState(false);
 
   // Notificar cambios en el estado de conexión
@@ -14,7 +14,10 @@ export default function GoogleCalendarButton({ isConnected, onConnectionChange }
     try {
       setLoading(true);
       const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/google/auth`, {
-        credentials: 'include'
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ userType }) // Pasar el tipo de usuario al backend
       });
       const data = await response.json();
       
@@ -49,7 +52,11 @@ export default function GoogleCalendarButton({ isConnected, onConnectionChange }
           </svg>
           <div>
             <p className="text-green-700 font-medium">Conectado con Google Calendar</p>
-            <p className="text-green-600 text-sm">Las citas se sincronizarán automáticamente</p>
+            <p className="text-green-600 text-sm">
+              {userType === 'psicologo' 
+                ? 'Las citas de tus pacientes se sincronizarán automáticamente' 
+                : 'Las citas se sincronizarán automáticamente'}
+            </p>
           </div>
         </div>
       </div>
@@ -64,7 +71,11 @@ export default function GoogleCalendarButton({ isConnected, onConnectionChange }
       <svg className="h-6 w-6" viewBox="0 0 24 24">
         <path d="M21.67,11H12.67V13.5H17.87C17.27,16.12 15,18 12.18,18C8.85,18 6.15,15.3 6.15,12C6.15,8.7 8.85,6 12.18,6C13.8,6 15.3,6.68 16.41,7.79L18.2,6C16.65,4.47 14.51,3.5 12.18,3.5C7.47,3.5 3.65,7.32 3.65,12C3.65,16.68 7.47,20.5 12.18,20.5C16.89,20.5 20.71,16.68 20.71,12C20.71,11.66 20.69,11.33 20.65,11H21.67Z" fill="#4285F4"/>
       </svg>
-      <span>Conectar con Google Calendar</span>
+      <span>
+        {userType === 'psicologo'
+          ? 'Conectar tu calendario de Google' 
+          : 'Conectar con Google Calendar'}
+      </span>
     </button>
   );
 }

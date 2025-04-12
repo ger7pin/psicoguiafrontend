@@ -3,27 +3,58 @@ import { useState } from 'react';
 import { Calendar } from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 
-export default function CalendarSection({ selectedDate, setSelectedDate, citas, psicologos }) {
-  const [citaDetails, setCitaDetails] = useState(null);
+export default function CalendarSection({ selectedDate, setSelectedDate, citas, psicologos, clientes, setCitaDetails: externalSetCitaDetails }) {
+  const [internalCitaDetails, setInternalCitaDetails] = useState(null);
+  
+  // Determine si estamos en el dashboard del cliente o del psicólogo
+  const esDashboardPsicologo = clientes && !psicologos;
 
   const handleSelectDate = (date) => {
     setSelectedDate(date);
     
-    const citaDelDia = citas.find(
+    // Encontrar citas para este día
+    const citasDelDia = citas.filter(
       cita => new Date(cita.fecha_hora).toDateString() === date.toDateString()
     );
     
-    if (citaDelDia) {
+    if (citasDelDia.length > 0) {
+      // Mostrar la primera cita del día (podríamos mostrar una lista en el futuro)
+      const citaDelDia = citasDelDia[0];
+      
       // Asegurarse de que la cita tenga toda la información necesaria
-      const citaConDetalles = {
-        ...citaDelDia,
-        psicologo: psicologos?.find(p => p.id === citaDelDia.psicologo_id) || {
-          nombre: 'Psicólogo no encontrado'
-        }
-      };
-      setCitaDetails(citaConDetalles);
+      let citaConDetalles;
+      
+      if (esDashboardPsicologo) {
+        // Para psicólogos, mostrar info del cliente
+        citaConDetalles = {
+          ...citaDelDia,
+          cliente: clientes?.find(c => c.id === citaDelDia.cliente_id) || {
+            nombre: 'Cliente no encontrado'
+          }
+        };
+      } else {
+        // Para clientes, mostrar info del psicólogo
+        citaConDetalles = {
+          ...citaDelDia,
+          psicologo: psicologos?.find(p => p.id === citaDelDia.psicologo_id) || {
+            nombre: 'Psicólogo no encontrado'
+          }
+        };
+      }
+      
+      // Si hay un manejador externo, usarlo
+      if (setCitaDetails) {
+        setCitaDetails(citaConDetalles);
+      } else {
+        // De lo contrario, usar el estado interno
+        setInternalCitaDetails(citaConDetalles);
+      }
     } else {
-      setCitaDetails(null);
+      if (setCitaDetails) {
+        setCitaDetails(null);
+      } else {
+        setInternalCitaDetails(null);
+      }
     }
   };
 
@@ -131,21 +162,32 @@ export default function CalendarSection({ selectedDate, setSelectedDate, citas, 
         className="w-full p-4"
       />
 
-      {/* Sección de detalles de la cita */}
-      {citaDetails && (
+      {/* Sección de detalles de la cita - solo se muestra si no hay manejador externo */}
+      {!externalSetCitaDetails && internalCitaDetails && (
         <div className="bg-white/10 mt-6 p-4 rounded-xl border border-white/10 shadow-md">
           <h3 className="text-lg font-semibold text-primary mb-2">Detalles de la Cita</h3>
-          <p className="text-muted-foreground">
-            <span className="font-medium">Psicólogo:</span>{' '}
-            {citaDetails.psicologo?.nombre || 'Nombre no disponible'}
-          </p>
+          
+          {esDashboardPsicologo ? (
+            /* Vista para psicólogos */
+            <p className="text-muted-foreground">
+              <span className="font-medium">Cliente:</span>{' '}
+              {internalCitaDetails.cliente?.nombre || 'Cliente no disponible'}
+            </p>
+          ) : (
+            /* Vista para clientes */
+            <p className="text-muted-foreground">
+              <span className="font-medium">Psicólogo:</span>{' '}
+              {internalCitaDetails.psicologo?.nombre || 'Nombre no disponible'}
+            </p>
+          )}
+          
           <p className="text-muted-foreground">
             <span className="font-medium">Fecha y Hora:</span>{' '}
-            {new Date(citaDetails.fecha_hora).toLocaleString()}
+            {new Date(internalCitaDetails.fecha_hora).toLocaleString()}
           </p>
           <p className="text-muted-foreground">
             <span className="font-medium">Descripción:</span>{' '}
-            {citaDetails.descripcion || 'Sin descripción'}
+            {internalCitaDetails.descripcion || 'Sin descripción'}
           </p>
         </div>
       )}
