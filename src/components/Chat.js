@@ -1,8 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import { toast } from 'sonner';
 import useAuthUser from '../hooks/useAuthUser';
-import Image from 'next/image';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { initializeChat, updateChatMessage } from '../services/chatService';
@@ -56,15 +55,6 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
 
   const handleInputChange = (e) => {
     setMensaje(e.target.value);
-  };
-
-  const handleArchivoChange = (e) => {
-    const file = e.target.files[0];
-    if (file && file.size <= 31457280) { // 30MB
-      setArchivo(file);
-    } else {
-      toast.error('El archivo excede el tamaño máximo permitido (30MB)');
-    }
   };
 
   const handleEmojiClick = (emojiData) => {

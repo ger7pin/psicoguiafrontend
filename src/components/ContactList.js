@@ -1,11 +1,7 @@
 import React, { useState } from 'react';
-import { toast } from 'sonner';
-import useAuthUser from '../hooks/useAuthUser';
 
 const ContactList = ({ contactos, onContactClick }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const { token } = useAuthUser('clientes');
-
   const filteredContacts = contactos.filter(contact =>
     contact.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );

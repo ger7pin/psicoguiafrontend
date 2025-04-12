@@ -1,5 +1,4 @@
 import { db } from '../firebase/config';
-import { collection, doc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 
 export const initializeChat = async (clienteId, psicologoId) => {
   // Garantizar que el ID sea seguro para rutas y Firestore
