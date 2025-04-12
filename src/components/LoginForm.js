@@ -35,11 +35,30 @@ export default function LoginForm({ userType }) {
   };
 
   return (
-    <form onSubmit={handleLogin} className="space-y-4">
-      <input type="email" placeholder="Correo electrónico" value={email} onChange={(e) => setEmail(e.target.value)} className="w-full border px-3 py-2 rounded" required />
-      <input type="password" placeholder="Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full border px-3 py-2 rounded" required />
+    <form onSubmit={handleLogin} className="space-y-4 w-full max-w-md mx-auto px-4 sm:px-0">
+      <input 
+        type="email" 
+        placeholder="Correo electrónico" 
+        value={email} 
+        onChange={(e) => setEmail(e.target.value)} 
+        className="w-full border px-4 py-3 sm:py-2 rounded text-base" 
+        required 
+      />
+      <input 
+        type="password" 
+        placeholder="Contraseña" 
+        value={password} 
+        onChange={(e) => setPassword(e.target.value)} 
+        className="w-full border px-4 py-3 sm:py-2 rounded text-base" 
+        required 
+      />
       {error && <p className="text-red-600 text-sm font-medium">{error}</p>}
-      <button type="submit" className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 transition">Iniciar sesión</button>
+      <button 
+        type="submit" 
+        className="w-full bg-blue-600 text-white py-3 sm:py-2 rounded hover:bg-blue-700 transition text-base"
+      >
+        Iniciar sesión
+      </button>
     </form>
   );
 }

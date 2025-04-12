@@ -117,16 +117,26 @@ export default function DashboardCliente() {
     <div className="h-screen flex flex-col bg-white">
       <Navbar />
       
-      <div className="flex-1 p-6 overflow-hidden">
-        <header className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-800">
+      <div className="flex-1 p-4 sm:p-6 overflow-hidden">
+        <header className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
             Bienvenido/a, {cliente?.nombre}
           </h1>
         </header>
 
-        <div className="grid grid-cols-12 gap-4 h-[calc(100vh-160px)]">
-          {/* Sidebar */}
-          <div className="col-span-4 h-full flex flex-col gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[calc(100vh-160px)]">
+          {/* Sidebar - Se convierte en pantalla completa en móvil cuando el chat está abierto */}
+          <div className={`${showChat ? 'fixed inset-0 z-50 bg-white p-4' : ''} 
+                          lg:relative lg:col-span-4 h-full flex flex-col gap-4`}>
+            {showChat && (
+              <button
+                onClick={() => setShowChat(false)}
+                className="lg:hidden mb-4 text-gray-600 hover:text-gray-800"
+              >
+                ← Volver
+              </button>
+            )}
+            
             <div className="flex-1 overflow-hidden">
               <ContactList 
                 contactos={contactos} 
@@ -135,7 +145,7 @@ export default function DashboardCliente() {
             </div>
             
             {!showChat && (
-              <div className="h-1/2 overflow-auto">
+              <div className="h-auto lg:h-1/2 overflow-auto mt-4">
                 <AppointmentForm
                   formulario={formulario}
                   handleChange={handleChange}
@@ -148,7 +158,7 @@ export default function DashboardCliente() {
           </div>
 
           {/* Main Content */}
-          <div className="col-span-8 h-full overflow-hidden">
+          <div className={`${showChat && 'hidden lg:block'} lg:col-span-8 h-full overflow-hidden`}>
             {showChat ? (
               <Chat 
                 clienteId={cliente?.id}

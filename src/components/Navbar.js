@@ -58,11 +58,11 @@ export default function Navbar() {
 
   return (
     <nav className="bg-white shadow-md fixed w-full z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <Link href="/">
-            <button className="flex items-center transform transition-transform duration-200 hover:scale-105">
-              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+            <button className="flex items-center">
+              <span className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
                 PsicologíaApp
               </span>
             </button>
@@ -96,7 +96,7 @@ export default function Navbar() {
           <div className="md:hidden">
             <button
               onClick={() => setIsMenuOpen(!isMenuOpen)}
-              className="inline-flex items-center justify-center p-2 rounded-md text-blue-600 hover:text-blue-700 hover:bg-blue-50 focus:outline-none"
+              className="p-2 rounded-md text-blue-600 hover:text-blue-700 hover:bg-blue-50"
             >
               <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 {isMenuOpen ? (
@@ -111,7 +111,7 @@ export default function Navbar() {
 
         {/* Menú móvil */}
         {isMenuOpen && (
-          <div className="md:hidden px-2 pt-2 pb-3 space-y-2">
+          <div className="md:hidden fixed inset-0 top-16 bg-white z-40 px-4 py-6 space-y-3">
             {logueado ? (
               <>
                 <FIRButton onClick={handleDashboardRedirect} className="w-full text-left" variant="outline">Dashboard</FIRButton> {/* Botón Dashboard */}

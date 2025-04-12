@@ -10,11 +10,11 @@ export default function ClienteLoginPage() {
     <>
       <Navbar />
       <div
-        className="min-h-screen bg-cover bg-center flex items-center justify-center px-4"
+        className="min-h-screen bg-cover bg-center flex items-center justify-center px-4 py-8 sm:py-0"
         style={{ backgroundImage: "url('/img/clienteform.png')" }}
       >
-        <div className="bg-white bg-opacity-90 p-8 rounded-lg shadow-lg max-w-md w-full md:ml-170">
-          <h2 className="text-2xl font-semibold text-gray-800 mb-4 text-center">
+        <div className="bg-white/90 w-full max-w-md mx-auto p-4 sm:p-8 rounded-lg shadow-lg">
+          <h2 className="text-xl sm:text-2xl font-semibold text-gray-800 mb-4 text-center">
             Accede como cliente
           </h2>
           <LoginForm userType="clientes" />
