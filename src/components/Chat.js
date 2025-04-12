@@ -97,7 +97,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
         </div>
         <button
           onClick={onClose}
-          className="lg:block p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"
+          className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
@@ -122,7 +122,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
       </div>
 
       {/* Chat input */}
-      <div className="border-t p-2 sm:p-4">
+      <div className="border-t p-4">
         <form onSubmit={enviarMensaje} className="flex items-end space-x-2">
           <button
             type="button"
