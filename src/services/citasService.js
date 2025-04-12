@@ -15,10 +15,17 @@ export const crearCita = async (datos) => {
 };
 
 export const obtenerCitas = async () => {
-  const res = await fetch(`${API}/citas`, {
-    credentials: 'include',
-  });
-  return await res.json();
+  try {
+    const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/citas`, {
+      credentials: 'include' 
+    });
+    
+    const data = await res.json();
+    return data;
+  } catch (error) {
+    console.error('Error al obtener citas:', error);
+    return [];
+  }
 };
 
 export const obtenerCitaPorId = async (id) => {

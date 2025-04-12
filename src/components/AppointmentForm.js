@@ -9,7 +9,7 @@ export default function AppointmentForm({
 }) {
   return (
     <div className="bg-white/10 backdrop-blur-sm p-6 rounded-2xl border border-white/20 shadow-xl">
-      <h2 className="text-xl font-semibold text-primary mb-4">Reservar una nueva cita</h2>
+      <h2 className="text-xl font-semibold text-primary mb-4">Reservar cita</h2>
       <form onSubmit={reservarCita} className="space-y-4">
         <div>
           <label className="block mb-2 text-sm text-muted-foreground">Psicólogo</label>
@@ -17,7 +17,7 @@ export default function AppointmentForm({
             name="psicologo_id"
             value={formulario.psicologo_id}
             onChange={handleChange}
-            className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-foreground focus:ring-2 focus:ring-primary"
+            className="w-full p-2.5 rounded-lg bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-blue-500"
             required
           >
             <option value="">-- Selecciona --</option>
@@ -37,7 +37,7 @@ export default function AppointmentForm({
               name="fecha"
               value={formulario.fecha}
               onChange={handleChange}
-              className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-foreground focus:ring-2 focus:ring-primary"
+              className="w-full p-2.5 rounded-lg bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
@@ -48,7 +48,7 @@ export default function AppointmentForm({
               name="hora"
               value={formulario.hora}
               onChange={handleChange}
-              className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-foreground focus:ring-2 focus:ring-primary"
+              className="w-full p-2.5 rounded-lg bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-blue-500"
               required
             />
           </div>
@@ -60,22 +60,23 @@ export default function AppointmentForm({
             name="descripcion"
             value={formulario.descripcion}
             onChange={handleChange}
-            rows="4"
-            className="w-full p-2.5 rounded-xl bg-white/5 border border-white/10 text-foreground focus:ring-2 focus:ring-primary"
+            rows="2"
+            className="w-full p-2.5 rounded-lg bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-blue-500 resize-none"
+            placeholder="Breve descripción de la consulta..."
           />
         </div>
 
         <button
           type="submit"
-          className="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white py-2 rounded-xl
-            transform active:scale-95 transition-transform duration-150 ease-in-out
-            shadow-lg hover:shadow-xl"
+          className="w-full bg-blue-500 hover:bg-blue-600 text-white py-2.5 rounded-lg
+            transform active:scale-95 transition-all duration-150 font-medium shadow-md hover:shadow-lg"
         >
           Reservar cita
         </button>
       </form>
-
-      {mensaje && <p className="mt-4 text-center font-medium text-primary">{mensaje}</p>}
+      {mensaje && (
+        <p className="mt-4 text-center text-sm font-medium text-primary">{mensaje}</p>
+      )}
     </div>
   );
 }

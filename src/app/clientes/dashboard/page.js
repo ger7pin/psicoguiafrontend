@@ -10,6 +10,7 @@ import GoogleCalendarButton from '@/components/GoogleCalendarButton';
 import useAuthUser from '@/hooks/useAuthUser';
 import { crearCita, obtenerCitas } from '@/services/citasService';
 import { obtenerPsicologos } from '@/services/psicologosService';
+import Chat from '@/components/Chat';
 
 export default function DashboardCliente() {
   const { cliente, cargando } = useAuthUser('clientes');
@@ -25,6 +26,8 @@ export default function DashboardCliente() {
   });
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [citaDetails, setCitaDetails] = useState(null);
+  const [selectedContact, setSelectedContact] = useState(null);
+  const [showChat, setShowChat] = useState(false);
 
   // Cargar psicólogos, citas y contactos al inicio
   useEffect(() => {
@@ -95,39 +98,88 @@ export default function DashboardCliente() {
     }
   };
 
-  if (cargando) return <div className="text-center mt-10">Cargando...</div>;
+  const handleContactClick = (contacto) => {
+    setSelectedContact(contacto);
+    setShowChat(true);
+    // Eliminar la redirección
+    // window.location.href = `/chat/psicologo/${contacto.id}`;
+  };
+
+  if (cargando) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="animate-pulse text-lg text-gray-600">Cargando...</div>
+      </div>
+    );
+  }
 
   return (
-    <>
+    <div className="h-screen flex flex-col bg-white">
       <Navbar />
-      <div className="p-6 max-w-7xl mx-auto">
-        <h1 className="text-3xl font-bold mb-6">Bienvenido/a, {cliente?.nombre}</h1>
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
-          <div className="md:col-span-4 space-y-6">
-            <ContactList contactos={contactos} />
-            <AppointmentForm
-              formulario={formulario}
-              handleChange={handleChange}
-              psicologos={psicologos}
-              reservarCita={reservarCita}
-              mensaje={mensaje}
-            />
+      
+      <div className="flex-1 p-6 overflow-hidden">
+        <header className="mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">
+            Bienvenido/a, {cliente?.nombre}
+          </h1>
+        </header>
+
+        <div className="grid grid-cols-12 gap-4 h-[calc(100vh-160px)]">
+          {/* Sidebar */}
+          <div className="col-span-4 h-full flex flex-col gap-4">
+            <div className="flex-1 overflow-hidden">
+              <ContactList 
+                contactos={contactos} 
+                onContactClick={handleContactClick}
+              />
+            </div>
+            
+            {!showChat && (
+              <div className="h-1/2 overflow-auto">
+                <AppointmentForm
+                  formulario={formulario}
+                  handleChange={handleChange}
+                  psicologos={psicologos}
+                  reservarCita={reservarCita}
+                  mensaje={mensaje}
+                />
+              </div>
+            )}
           </div>
 
-          <div className="md:col-span-8 space-y-6">
-          <CalendarSection
-  selectedDate={selectedDate}
-  setSelectedDate={setSelectedDate}
-  citas={citas}
-  setCitaDetails={setCitaDetails} // ⬅️ Añade esta línea
-/>
-
-
-            {citaDetails && <AppointmentDetails cita={citaDetails} />}
-            <GoogleCalendarButton />
+          {/* Main Content */}
+          <div className="col-span-8 h-full overflow-hidden">
+            {showChat ? (
+              <Chat 
+                clienteId={cliente?.id}
+                psicologoId={selectedContact.id}
+                onClose={() => setShowChat(false)}
+              />
+            ) : (
+              <div className="h-full flex flex-col gap-4">
+                <div className="flex-1">
+                  <CalendarSection
+                    selectedDate={selectedDate}
+                    setSelectedDate={setSelectedDate}
+                    citas={citas}
+                    setCitaDetails={setCitaDetails}
+                  />
+                </div>
+                
+                {citaDetails && (
+                  <div className="h-1/3">
+                    <AppointmentDetails cita={citaDetails} />
+                  </div>
+                )}
+                
+                <div className="mt-auto">
+                  <GoogleCalendarButton />
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
-    </>
+    </div>
   );
 }

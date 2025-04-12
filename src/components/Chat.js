@@ -1,64 +1,52 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { io } from 'socket.io-client';
 import EmojiPicker from 'emoji-picker-react';
-import { Sonner } from 'sonner';
-import { useAuthUser } from '../hooks/useAuthUser';
-import Image from 'next/image'; // Importación añadida
+import { toast } from 'sonner';
+import useAuthUser from '../hooks/useAuthUser';
+import Image from 'next/image';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { db } from '../firebase/config';
+import { initializeChat, updateChatMessage } from '../services/chatService';
 
-const Chat = ({ contacto }) => {
+const Chat = ({ clienteId, psicologoId, onClose }) => {
   const [mensajes, setMensajes] = useState([]);
   const [mensaje, setMensaje] = useState('');
   const [archivo, setArchivo] = useState(null);
   const [mostrarEmojis, setMostrarEmojis] = useState(false);
-  const [contactoEscribiendo, setContactoEscribiendo] = useState(false);
-  const [socket, setSocket] = useState(null);
+  const [chatId, setChatId] = useState(null);  // Añadir este estado
   const chatRef = useRef(null);
-  const timeoutRef = useRef(null);
-  const { user, token } = useAuthUser();
-
-  const handleUsuarioEscribiendo = useCallback((data) => {
-    if (data.emisorId === contacto.id) {
-      setContactoEscribiendo(data.escribiendo);
-    }
-  }, [contacto?.id]);
-
-  const cargarMensajes = useCallback(async () => {
-    try {
-      const response = await fetch(`/api/mensajes?contactoId=${contacto.id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await response.json();
-      setMensajes(data);
-    } catch (error) {
-      console.error('Error al cargar mensajes:', error);
-      Sonner.error('Error al cargar los mensajes');
-    }
-  }, [contacto?.id, token]);
+  const { cliente } = useAuthUser('clientes');
 
   useEffect(() => {
-    const newSocket = io(process.env.NEXT_PUBLIC_BACKEND_URL, {
-      auth: { token }
-    });
+    const setupChat = async () => {
+      if (!clienteId || !psicologoId) return;
+      
+      try {
+        const id = await initializeChat(clienteId, psicologoId);
+        setChatId(id);
+        
+        // Suscribirse a los mensajes
+        const q = query(
+          collection(db, 'chats', id, 'messages'),
+          orderBy('timestamp', 'asc')
+        );
 
-    newSocket.on('connect', () => {
-      console.log('Conectado al servidor de Socket.IO');
-    });
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+          const messageList = snapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          setMensajes(messageList);
+        });
 
-    newSocket.on('nuevoMensaje', handleNuevoMensaje);
-    newSocket.on('usuarioEscribiendo', handleUsuarioEscribiendo);
-    newSocket.on('estadoMensaje', handleEstadoMensaje);
-    newSocket.on('nuevaReaccion', handleNuevaReaccion);
+        return () => unsubscribe();
+      } catch (error) {
+        console.error('Error al inicializar chat:', error);
+        toast.error('Error al inicializar el chat');
+      }
+    };
 
-    setSocket(newSocket);
-
-    return () => newSocket.close();
-  }, [token, handleUsuarioEscribiendo]);
-
-  useEffect(() => {
-    if (contacto?.id) {
-      cargarMensajes();
-    }
-  }, [contacto, cargarMensajes]);
+    setupChat();
+  }, [clienteId, psicologoId]);
 
   useEffect(() => {
     if (chatRef.current) {
@@ -66,39 +54,8 @@ const Chat = ({ contacto }) => {
     }
   }, [mensajes]);
 
-  const handleNuevoMensaje = (data) => {
-    setMensajes(prev => [...prev, data.mensaje]);
-    new Audio('/sounds/notification.mp3').play();
-    if (Notification.permission === 'granted') {
-      new Notification('Nuevo mensaje', {
-        body: data.mensaje.contenido,
-        icon: '/icons/chat-icon.png'
-      });
-    }
-  };
-
-  const handleEstadoMensaje = (data) => {
-    setMensajes(prev => prev.map(m => 
-      m.id === data.mensajeId ? { ...m, estado: data.estado } : m
-    ));
-  };
-
-  const handleNuevaReaccion = (data) => {
-    setMensajes(prev => prev.map(m => 
-      m.id === data.mensajeId ? { ...m, reacciones: data.reacciones } : m
-    ));
-  };
-
   const handleInputChange = (e) => {
     setMensaje(e.target.value);
-    
-    socket?.emit('escribiendo', { receptorId: contacto.id });
-    
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    
-    timeoutRef.current = setTimeout(() => {
-      socket?.emit('dejoDeEscribir', { receptorId: contacto.id });
-    }, 1000);
   };
 
   const handleArchivoChange = (e) => {
@@ -106,7 +63,7 @@ const Chat = ({ contacto }) => {
     if (file && file.size <= 31457280) { // 30MB
       setArchivo(file);
     } else {
-      Sonner.error('El archivo excede el tamaño máximo permitido (30MB)');
+      toast.error('El archivo excede el tamaño máximo permitido (30MB)');
     }
   };
 
@@ -117,95 +74,64 @@ const Chat = ({ contacto }) => {
   const enviarMensaje = async (e) => {
     e.preventDefault();
     if (!mensaje.trim() && !archivo) return;
-
-    const formData = new FormData();
-    if (mensaje.trim()) formData.append('contenido', mensaje.trim());
-    if (archivo) formData.append('archivo', archivo);
+    if (!cliente?.id) return toast.error('Error: Usuario no autenticado');
+    if (!chatId) return toast.error('Error: Chat no inicializado');
 
     try {
-      const response = await fetch('/api/mensajes', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData
-      });
+      const messageData = {
+        content: mensaje,
+        senderId: cliente.id,
+        timestamp: serverTimestamp()
+      };
 
-      if (!response.ok) throw new Error('Error al enviar mensaje');
+      // Añadir mensaje a la subcolección de mensajes
+      await addDoc(collection(db, 'chats', chatId, 'messages'), messageData);
 
+      // Actualizar último mensaje en el documento principal del chat
+      await updateChatMessage(chatId, messageData);
+      
       setMensaje('');
       setArchivo(null);
-      if (timeoutRef.current) clearTimeout(timeoutRef.current);
-      socket?.emit('dejoDeEscribir', { receptorId: contacto.id });
     } catch (error) {
-      console.error('Error:', error);
-      Sonner.error('Error al enviar el mensaje');
+      console.error('Error al enviar mensaje:', error);
+      toast.error('Error al enviar el mensaje');
     }
   };
 
   return (
     <div className="flex flex-col h-full bg-white rounded-lg shadow-lg">
-      <div className="flex items-center p-4 border-b">
+      {/* Chat header */}
+      <div className="flex items-center justify-between p-4 border-b">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold">{contacto.nombre}</h3>
-          {contactoEscribiendo && (
-            <p className="text-sm text-gray-500">Escribiendo...</p>
-          )}
+          <h3 className="text-lg font-semibold">Chat</h3>
         </div>
+        <button
+          onClick={onClose}
+          className="p-2 text-gray-500 hover:text-gray-700 rounded-full hover:bg-gray-100"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
       </div>
-      <div 
-        ref={chatRef}
-        className="flex-1 overflow-y-auto p-4 space-y-4"
-      >
+
+      {/* Chat messages */}
+      <div ref={chatRef} className="flex-1 overflow-y-auto p-4 space-y-4">
         {mensajes.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${msg.emisorId === user.id ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${msg.senderId === cliente.id ? 'justify-end' : 'justify-start'}`}
           >
             <div className={`max-w-[70%] rounded-lg p-3 ${
-              msg.emisorId === user.id ? 'bg-blue-500 text-white' : 'bg-gray-100'
+              msg.senderId === cliente.id ? 'bg-blue-500 text-white' : 'bg-gray-100'
             }`}>
-              <p>{msg.contenido}</p>
-              {msg.archivoUrl && (
-                <div className="mt-2">
-                  {msg.archivoTipo.startsWith('image/') ? (
-                    <Image 
-                      src={msg.archivoUrl} 
-                      alt="Imagen adjunta"
-                      width={500} 
-                      height={300} 
-                      priority 
-                      className="max-w-full rounded"
-                    />
-                  ) : (
-                    <a 
-                      href={msg.archivoUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sm underline"
-                    >
-                      Ver archivo adjunto
-                    </a>
-                  )}
-                </div>
-              )}
-              <div className="flex mt-2 space-x-1">
-                {Object.entries(msg.reacciones || {}).map(([userId, reaccion]) => (
-                  <span key={userId}>{reaccion}</span>
-                ))}
-              </div>
-              <div className="text-xs mt-1 text-right">
-                {msg.emisorId === user.id && (
-                  <span>
-                    {msg.estado === 'enviado' && '✓'}
-                    {msg.estado === 'recibido' && '✓✓'}
-                    {msg.estado === 'leido' && '✓✓ 👁️'}
-                  </span>
-                )}
-              </div>
+              <p>{msg.content}</p>
             </div>
           </div>
         ))}
       </div>
 
+      {/* Chat input */}
       <div className="border-t p-4">
         <form onSubmit={enviarMensaje} className="flex items-end space-x-2">
           <button
@@ -220,15 +146,6 @@ const Chat = ({ contacto }) => {
               <EmojiPicker onEmojiClick={handleEmojiClick} />
             </div>
           )}
-          <label className="cursor-pointer p-2 text-gray-500 hover:text-gray-700">
-            <input
-              type="file"
-              className="hidden"
-              onChange={handleArchivoChange}
-              accept="image/*,.pdf,.doc,.docx,.mp3,.wav,.mp4"
-            />
-            📎
-          </label>
           <input
             type="text"
             value={mensaje}

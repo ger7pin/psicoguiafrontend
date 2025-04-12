@@ -1,142 +1,68 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState } from 'react';
 import { toast } from 'sonner';
 import useAuthUser from '../hooks/useAuthUser';
 
-const ContactList = ({ onSelectContact, selectedContact }) => {
-  const [contacts, setContacts] = useState([]);
-  const [blockedContacts, setBlockedContacts] = useState([]);
+const ContactList = ({ contactos, onContactClick }) => {
   const [searchTerm, setSearchTerm] = useState('');
-  const { token } = useAuthUser('clientes'); // Agregar el tipo de usuario
+  const { token } = useAuthUser('clientes');
 
-  const loadContacts = useCallback(async () => {
-    try {
-      const response = await fetch('/api/contactos', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await response.json();
-      setContacts(data);
-    } catch (error) {
-      console.error('Error al cargar contactos:', error);
-      toast.error('Error al cargar la lista de contactos');
-    }
-  }, [token]);
-
-  const loadBlockedContacts = useCallback(async () => {
-    try {
-      const response = await fetch('/api/contactos/bloqueados', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await response.json();
-      setBlockedContacts(data.map(b => b.bloqueadoId));
-    } catch (error) {
-      console.error('Error al cargar contactos bloqueados:', error);
-    }
-  }, [token]);
-
-  useEffect(() => {
-    if (token) {
-      loadContacts();
-      loadBlockedContacts();
-    }
-  }, [token, loadContacts, loadBlockedContacts]);
-
-  const handleBlock = useCallback(async (contactId) => {
-    try {
-      await fetch('/api/contactos/bloquear', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`
-        },
-        body: JSON.stringify({ bloqueadoId: contactId })
-      });
-
-      setBlockedContacts(prev => [...prev, contactId]);
-      toast.success('Contacto bloqueado exitosamente');
-    } catch (error) {
-      console.error('Error al bloquear contacto:', error);
-      toast.error('Error al bloquear el contacto');
-    }
-  }, [token]);
-
-  const handleUnblock = useCallback(async (contactId) => {
-    try {
-      await fetch(`/api/contactos/desbloquear/${contactId}`, {
-        method: 'DELETE',
-        headers: { Authorization: `Bearer ${token}` }
-      });
-
-      setBlockedContacts(prev => prev.filter(id => id !== contactId));
-      toast.success('Contacto desbloqueado exitosamente');
-    } catch (error) {
-      console.error('Error al desbloquear contacto:', error);
-      toast.error('Error al desbloquear el contacto');
-    }
-  }, [token]);
-
-  const filteredContacts = contacts.filter(contact =>
+  const filteredContacts = contactos.filter(contact =>
     contact.nombre.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
-    <div className="flex flex-col h-full bg-white rounded-lg shadow-lg">
-      {/* Barra de búsqueda */}
-      <div className="p-4 border-b">
-        <input
-          type="text"
-          placeholder="Buscar contactos..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="w-full p-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
+    <div className="h-full flex flex-col bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 shadow-xl">
+      <div className="p-6 border-b border-gray-200/20">
+        <h2 className="text-xl font-semibold text-primary mb-4">Mis Contactos</h2>
+        <div className="relative">
+          <input
+            type="text"
+            placeholder="Buscar contactos..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full p-2.5 pl-10 rounded-lg bg-white border border-gray-200 text-gray-800 focus:ring-2 focus:ring-blue-500"
+          />
+          <svg 
+            className="absolute left-3 top-3 w-4 h-4 text-gray-400"
+            fill="none" 
+            strokeLinecap="round" 
+            strokeLinejoin="round" 
+            strokeWidth="2" 
+            viewBox="0 0 24 24" 
+            stroke="currentColor"
+          >
+            <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
       </div>
 
-      {/* Lista de contactos */}
-      <div className="flex-1 overflow-y-auto">
-        {filteredContacts.map((contact) => (
+      <div className="flex-1 overflow-auto">
+        {filteredContacts.map((contacto) => (
           <div
-            key={contact.id}
-            className={`flex items-center p-4 border-b hover:bg-gray-50 cursor-pointer ${
-              selectedContact?.id === contact.id ? 'bg-blue-50' : ''
-            }`}
-            onClick={() => !blockedContacts.includes(contact.id) && onSelectContact(contact)}
+            key={contacto.id}
+            onClick={() => onContactClick({
+              id: contacto.id,
+              nombre: contacto.nombre,
+              email: contacto.email,
+              tipo: 'psicologo'
+            })}
+            className="flex items-center p-4 hover:bg-blue-50/50 cursor-pointer border-b border-gray-200/20"
           >
-            {/* Avatar del contacto */}
-            <div className="relative">
-              <div className="w-12 h-12 rounded-full bg-gray-300 flex items-center justify-center">
-                {contact.nombre.charAt(0).toUpperCase()}
-              </div>
-              {contact.online && (
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white" />
-              )}
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-medium shadow-sm">
+              {contacto.nombre.charAt(0).toUpperCase()}
             </div>
-
-            {/* Información del contacto */}
-            <div className="flex-1 ml-4">
-              <h3 className="font-semibold">{contact.nombre}</h3>
-              <p className="text-sm text-gray-500">
-                {contact.online ? 'En línea' : 'Desconectado'}
-              </p>
+            <div className="ml-3 flex-1 min-w-0">
+              <p className="font-medium text-gray-800 truncate">{contacto.nombre}</p>
+              <p className="text-sm text-gray-500 truncate">{contacto.email}</p>
             </div>
-
-            {/* Botón de bloqueo/desbloqueo */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                if (blockedContacts.includes(contact.id)) {
-                  handleUnblock(contact.id);
-                } else {
-                  handleBlock(contact.id);
-                }
-              }}
-              className={`p-2 rounded-lg ${
-                blockedContacts.includes(contact.id)
-                  ? 'text-red-500 hover:bg-red-50'
-                  : 'text-gray-500 hover:bg-gray-100'
-              }`}
+            <svg 
+              className="w-5 h-5 text-gray-400" 
+              fill="none" 
+              stroke="currentColor" 
+              viewBox="0 0 24 24"
             >
-              {blockedContacts.includes(contact.id) ? '🚫' : '⋮'}
-            </button>
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 5l7 7-7 7" />
+            </svg>
           </div>
         ))}
       </div>
