@@ -20,19 +20,25 @@ export default function GoogleCalendarButton() {
 
   const handleConnect = async () => {
     if (isConnected) {
-      // Si ya está conectado, mostrar mensaje o manejar desconexión
       return;
     }
 
     try {
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/google/auth`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/google/auth?rol=cliente`, {
+        method: 'GET',
         credentials: 'include'
       });
       
-      if (!response.ok) throw new Error('Error al conectar con Google Calendar');
+      if (!response.ok) {
+        throw new Error('Error al conectar con Google Calendar');
+      }
       
       const data = await response.json();
-      window.location.href = data.authUrl;
+      if (data.authUrl) {
+        window.location.href = data.authUrl; // Redirigir al usuario a la URL de autorización de Google
+      } else {
+        throw new Error('No se recibió la URL de autorización');
+      }
       
     } catch (error) {
       console.error('Error:', error);
