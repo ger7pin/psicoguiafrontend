@@ -28,6 +28,7 @@ export default function DashboardCliente() {
   const [citaDetails, setCitaDetails] = useState(null);
   const [selectedContact, setSelectedContact] = useState(null);
   const [showChat, setShowChat] = useState(false);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
 
   // Cargar psicólogos, citas y contactos al inicio
   useEffect(() => {
@@ -58,6 +59,26 @@ export default function DashboardCliente() {
 
     cargarDatos();
   }, [cliente]);
+
+  useEffect(() => {
+    // Verificar el estado de la conexión con Google Calendar
+    async function checkGoogleConnection() {
+      try {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/google/connection-status`, {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setIsGoogleConnected(data.isConnected);
+        }
+      } catch (error) {
+        console.error('Error al verificar la conexión con Google:', error);
+      }
+    }
+
+    checkGoogleConnection();
+  }, []);
 
   const handleChange = (e) => {
     setFormulario({ ...formulario, [e.target.name]: e.target.value });
@@ -194,7 +215,16 @@ export default function DashboardCliente() {
                 )}
                 
                 <div className="mt-auto">
-                  <GoogleCalendarButton />
+                  {!isGoogleConnected ? (
+                    <button
+                      onClick={handleGoogleAuth}
+                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
+                    >
+                      Conectar con Google Calendar
+                    </button>
+                  ) : (
+                    <span className="text-green-600">✓ Conectado con Google Calendar</span>
+                  )}
                 </div>
               </div>
             )}
