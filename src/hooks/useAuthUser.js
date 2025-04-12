@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 
 const useAuthUser = (userType) => {
   const [cliente, setCliente] = useState(null);
-  
+  const [token, setToken] = useState(null);
   const [cargando, setCargando] = useState(true);
   const router = useRouter();
 
@@ -12,27 +12,19 @@ const useAuthUser = (userType) => {
     const verificarSesion = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
+          method: 'GET',
           credentials: 'include',
-          headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json'
-          }
         });
-
-        if (!res.ok) {
-          setCargando(false);
-          router.push(`/${userType}/login`);
-          return;
-        }
-
         const data = await res.json();
-        if (data.email) {
+
+        if (res.ok && data.email) {
           setCliente(data);
+          setToken(data.token); // Guardar el token
         } else {
           router.push(`/${userType}/login`);
         }
-      } catch (error) {
-        console.error('Error verificando sesión:', error);
+      } catch (err) {
+        console.warn('Sesión no activa. Redirigiendo...', err);
         router.push(`/${userType}/login`);
       } finally {
         setCargando(false);
