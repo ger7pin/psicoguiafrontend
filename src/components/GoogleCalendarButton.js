@@ -1,9 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function GoogleCalendarButton({ isConnected, onConnectionChange }) {
   const [loading, setLoading] = useState(false);
+
+  // Notificar cambios en el estado de conexión
+  useEffect(() => {
+    onConnectionChange?.(isConnected);
+  }, [isConnected, onConnectionChange]);
 
   const handleGoogleAuth = async () => {
     try {
@@ -18,6 +23,7 @@ export default function GoogleCalendarButton({ isConnected, onConnectionChange }
       }
     } catch (error) {
       console.error('Error al iniciar autenticación con Google:', error);
+      onConnectionChange?.(false);
     } finally {
       setLoading(false);
     }
