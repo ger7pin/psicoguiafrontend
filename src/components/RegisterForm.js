@@ -54,9 +54,11 @@ export default function RegisterForm({ userType }) {
         </div>
       )}
 
-      <form onSubmit={handleRegister} className="space-y-4">
+      <form onSubmit={handleRegister} className="space-y-4" autoComplete="on">
         <input
           type="text"
+          name="name"
+          autoComplete="name"
           placeholder="Nombre"
           className="w-full border border-gray-300 p-2 rounded"
           value={nombre}
@@ -66,6 +68,8 @@ export default function RegisterForm({ userType }) {
 
         <input
           type="email"
+          name="email"
+          autoComplete="email"
           placeholder="Correo electrónico"
           className="w-full border border-gray-300 p-2 rounded"
           value={email}
@@ -75,6 +79,8 @@ export default function RegisterForm({ userType }) {
 
         <input
           type="password"
+          name="new-password"
+          autoComplete="new-password"
           placeholder="Contraseña"
           className="w-full border border-gray-300 p-2 rounded"
           value={password}
@@ -84,6 +90,8 @@ export default function RegisterForm({ userType }) {
 
         <input
           type="tel"
+          name="tel"
+          autoComplete="tel"
           placeholder="Teléfono"
           className="w-full border border-gray-300 p-2 rounded"
           value={telefono}

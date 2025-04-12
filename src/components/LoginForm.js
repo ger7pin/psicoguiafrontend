@@ -35,9 +35,15 @@ export default function LoginForm({ userType }) {
   };
 
   return (
-    <form onSubmit={handleLogin} className="space-y-4 w-full max-w-md mx-auto px-4 sm:px-0">
+    <form 
+      onSubmit={handleLogin} 
+      className="space-y-4 w-full max-w-md mx-auto px-4 sm:px-0"
+      autoComplete="on"
+    >
       <input 
         type="email" 
+        name="email"
+        autoComplete="email"
         placeholder="Correo electrónico" 
         value={email} 
         onChange={(e) => setEmail(e.target.value)} 
@@ -46,6 +52,8 @@ export default function LoginForm({ userType }) {
       />
       <input 
         type="password" 
+        name="current-password"
+        autoComplete="current-password"
         placeholder="Contraseña" 
         value={password} 
         onChange={(e) => setPassword(e.target.value)} 
