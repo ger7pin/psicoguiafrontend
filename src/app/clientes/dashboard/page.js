@@ -62,7 +62,7 @@ export default function DashboardCliente() {
 
   useEffect(() => {
     // Verificar el estado de la conexión con Google Calendar
-    async function checkGoogleConnection() {
+    const checkGoogleConnection = async () => {
       try {
         const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/google/connection-status`, {
           credentials: 'include',
@@ -71,14 +71,28 @@ export default function DashboardCliente() {
         if (response.ok) {
           const data = await response.json();
           setIsGoogleConnected(data.isConnected);
+          // Guardar en localStorage para persistencia
+          localStorage.setItem('googleConnected', data.isConnected);
         }
       } catch (error) {
         console.error('Error al verificar la conexión con Google:', error);
       }
+    };
+
+    // Verificar al montar y cuando cambie el cliente
+    checkGoogleConnection();
+
+    // Verificar el estado guardado en localStorage
+    const savedState = localStorage.getItem('googleConnected');
+    if (savedState === 'true') {
+      setIsGoogleConnected(true);
     }
 
-    checkGoogleConnection();
-  }, []);
+    // Configurar un intervalo para verificar periódicamente
+    const interval = setInterval(checkGoogleConnection, 60000); // Cada minuto
+
+    return () => clearInterval(interval);
+  }, [cliente]);
 
   const handleChange = (e) => {
     setFormulario({ ...formulario, [e.target.name]: e.target.value });
@@ -124,6 +138,11 @@ export default function DashboardCliente() {
     setShowChat(true);
     // Eliminar la redirección
     // window.location.href = `/chat/psicologo/${contacto.id}`;
+  };
+
+  const handleGoogleConnectionChange = (newStatus) => {
+    setIsGoogleConnected(newStatus);
+    localStorage.setItem('googleConnected', newStatus);
   };
 
   if (cargando) {
@@ -215,7 +234,10 @@ export default function DashboardCliente() {
                 )}
                 
                 <div className="mt-auto">
-                  <GoogleCalendarButton isConnected={isGoogleConnected} />
+                  <GoogleCalendarButton 
+                    isConnected={isGoogleConnected}
+                    onConnectionChange={handleGoogleConnectionChange}
+                  />
                 </div>
               </div>
             )}
