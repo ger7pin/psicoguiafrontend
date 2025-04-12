@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function GoogleCalendarButton() {
-  const [isConnected, setIsConnected] = useState(false);
+  
   const router = useRouter();
 
   useEffect(() => {
