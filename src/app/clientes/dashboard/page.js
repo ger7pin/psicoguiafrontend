@@ -215,16 +215,7 @@ export default function DashboardCliente() {
                 )}
                 
                 <div className="mt-auto">
-                  {!isGoogleConnected ? (
-                    <button
-                      onClick={handleGoogleAuth}
-                      className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-                    >
-                      Conectar con Google Calendar
-                    </button>
-                  ) : (
-                    <span className="text-green-600">✓ Conectado con Google Calendar</span>
-                  )}
+                  <GoogleCalendarButton isConnected={isGoogleConnected} />
                 </div>
               </div>
             )}
