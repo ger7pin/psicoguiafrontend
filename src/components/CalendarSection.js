@@ -3,18 +3,29 @@ import { useState } from 'react';
 import { Calendar } from 'react-calendar';
 import 'react-calendar/dist/Calendar.css';
 
-export default function CalendarSection({ selectedDate, setSelectedDate, citas }) {
+export default function CalendarSection({ selectedDate, setSelectedDate, citas, psicologos }) {
   const [citaDetails, setCitaDetails] = useState(null);
 
-    const handleSelectDate = (date) => {
-        setSelectedDate(date);
-      
-        const citaDelDia = citas.find(
-          cita => new Date(cita.fecha_hora).toDateString() === date.toDateString()
-        );
-      
-    setCitaDetails(citaDelDia || null);
+  const handleSelectDate = (date) => {
+    setSelectedDate(date);
+    
+    const citaDelDia = citas.find(
+      cita => new Date(cita.fecha_hora).toDateString() === date.toDateString()
+    );
+    
+    if (citaDelDia) {
+      // Asegurarse de que la cita tenga toda la información necesaria
+      const citaConDetalles = {
+        ...citaDelDia,
+        psicologo: psicologos?.find(p => p.id === citaDelDia.psicologo_id) || {
+          nombre: 'Psicólogo no encontrado'
+        }
       };
+      setCitaDetails(citaConDetalles);
+    } else {
+      setCitaDetails(null);
+    }
+  };
 
   // Función para personalizar la apariencia de cada día
   const getTileContent = ({ date, view }) => {
@@ -27,7 +38,7 @@ export default function CalendarSection({ selectedDate, setSelectedDate, citas }
     );
 
     if (citasDelDia.length > 0) {
-  return (
+      return (
         <div className="relative w-full h-full">
           {/* Indicador de cita */}
           <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 mb-1">
@@ -37,12 +48,12 @@ export default function CalendarSection({ selectedDate, setSelectedDate, citas }
                 <span className="text-xs text-blue-500 font-medium">
                   {citasDelDia.length}
                 </span>
-      )}
-    </div>
+              )}
+            </div>
           </div>
         </div>
-  );
-}
+      );
+    }
     return null;
   };
 
@@ -125,14 +136,16 @@ export default function CalendarSection({ selectedDate, setSelectedDate, citas }
         <div className="bg-white/10 mt-6 p-4 rounded-xl border border-white/10 shadow-md">
           <h3 className="text-lg font-semibold text-primary mb-2">Detalles de la Cita</h3>
           <p className="text-muted-foreground">
-            <span className="font-medium">Psicólogo:</span> {citaDetails.psicologo.nombre}
+            <span className="font-medium">Psicólogo:</span>{' '}
+            {citaDetails.psicologo?.nombre || 'Nombre no disponible'}
           </p>
           <p className="text-muted-foreground">
             <span className="font-medium">Fecha y Hora:</span>{' '}
             {new Date(citaDetails.fecha_hora).toLocaleString()}
           </p>
           <p className="text-muted-foreground">
-            <span className="font-medium">Descripción:</span> {citaDetails.descripcion}
+            <span className="font-medium">Descripción:</span>{' '}
+            {citaDetails.descripcion || 'Sin descripción'}
           </p>
         </div>
       )}

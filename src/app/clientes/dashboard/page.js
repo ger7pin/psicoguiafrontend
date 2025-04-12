@@ -182,6 +182,7 @@ export default function DashboardCliente() {
                     selectedDate={selectedDate}
                     setSelectedDate={setSelectedDate}
                     citas={citas}
+                    psicologos={psicologos} // Asegúrate de pasar los psicólogos
                     setCitaDetails={setCitaDetails}
                   />
                 </div>
