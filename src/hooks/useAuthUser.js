@@ -12,19 +12,27 @@ const useAuthUser = (userType) => {
     const verificarSesion = async () => {
       try {
         const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
-          method: 'GET',
           credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          }
         });
-        const data = await res.json();
 
-        if (res.ok && data.email) {
+        if (!res.ok) {
+          setCargando(false);
+          router.push(`/${userType}/login`);
+          return;
+        }
+
+        const data = await res.json();
+        if (data.email) {
           setCliente(data);
-          setToken(data.token); // Guardar el token
         } else {
           router.push(`/${userType}/login`);
         }
-      } catch (err) {
-        console.warn('Sesión no activa. Redirigiendo...', err);
+      } catch (error) {
+        console.error('Error verificando sesión:', error);
         router.push(`/${userType}/login`);
       } finally {
         setCargando(false);

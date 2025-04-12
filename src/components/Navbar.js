@@ -57,8 +57,8 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white shadow-md fixed w-full z-50">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <nav className="bg-white shadow-md fixed w-full z-[100] top-0">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="flex justify-between items-center h-16">
           <Link href="/">
             <button className="flex items-center transform transition-transform duration-200 hover:scale-105">
@@ -111,27 +111,29 @@ export default function Navbar() {
 
         {/* Menú móvil */}
         {isMenuOpen && (
-          <div className="md:hidden px-2 pt-2 pb-3 space-y-2">
-            {logueado ? (
-              <>
-                <FIRButton onClick={handleDashboardRedirect} className="w-full text-left" variant="outline">Dashboard</FIRButton> {/* Botón Dashboard */}
-                <FIRButton onClick={handleLogout} className="w-full text-left" variant="outline">
-                  Cerrar sesión
-                </FIRButton>
-              </>
-            ) : (
-              <>
-                <FIRButton href="/clientes/login" className="w-full text-left" variant="secondary">
-                  Cliente
-                </FIRButton>
-                <FIRButton href="/psicologos/login" className="w-full text-left" variant="secondary">
-                  Psicólogo
-                </FIRButton>
-                <FIRButton href="/preregistro" className="w-full" variant="primary">
-                  Registrarse
-                </FIRButton>
-              </>
-            )}
+          <div className="md:hidden fixed inset-0 top-16 bg-white z-[90] px-4 py-6">
+            <div className="space-y-3">
+              {logueado ? (
+                <>
+                  <FIRButton onClick={handleDashboardRedirect} className="w-full text-left" variant="outline">Dashboard</FIRButton> {/* Botón Dashboard */}
+                  <FIRButton onClick={handleLogout} className="w-full text-left" variant="outline">
+                    Cerrar sesión
+                  </FIRButton>
+                </>
+              ) : (
+                <>
+                  <FIRButton href="/clientes/login" className="w-full text-left" variant="secondary">
+                    Cliente
+                  </FIRButton>
+                  <FIRButton href="/psicologos/login" className="w-full text-left" variant="secondary">
+                    Psicólogo
+                  </FIRButton>
+                  <FIRButton href="/preregistro" className="w-full" variant="primary">
+                    Registrarse
+                  </FIRButton>
+                </>
+              )}
+            </div>
           </div>
         )}
       </div>

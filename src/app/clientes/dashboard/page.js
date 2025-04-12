@@ -114,24 +114,25 @@ export default function DashboardCliente() {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-white">
+    <div className="min-h-screen flex flex-col bg-white">
       <Navbar />
       
-      <div className="flex-1 p-4 sm:p-6 overflow-hidden">
+      <div className="flex-1 p-4 sm:p-6 overflow-y-auto pt-16"> {/* Añadido pt-16 para el navbar fijo */}
         <header className="mb-4 sm:mb-6">
           <h1 className="text-xl sm:text-2xl font-bold text-gray-800">
             Bienvenido/a, {cliente?.nombre}
           </h1>
         </header>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 h-[calc(100vh-160px)]">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Sidebar - Se convierte en pantalla completa en móvil cuando el chat está abierto */}
-          <div className={`${showChat ? 'fixed inset-0 z-50 bg-white p-4' : ''} 
-                          lg:relative lg:col-span-4 h-full flex flex-col gap-4`}>
+          <div className={`${
+            showChat ? 'fixed inset-0 z-50 bg-white p-4 pt-16' : 'relative'
+          } lg:static lg:col-span-4 h-[calc(100vh-8rem)] flex flex-col gap-4`}>
             {showChat && (
               <button
                 onClick={() => setShowChat(false)}
-                className="lg:hidden mb-4 text-gray-600 hover:text-gray-800"
+                className="lg:hidden fixed top-20 left-4 z-50 bg-white p-2 rounded-lg shadow-md"
               >
                 ← Volver
               </button>
@@ -158,7 +159,9 @@ export default function DashboardCliente() {
           </div>
 
           {/* Main Content */}
-          <div className={`${showChat && 'hidden lg:block'} lg:col-span-8 h-full overflow-hidden`}>
+          <div className={`${
+            showChat ? 'hidden lg:block' : ''
+          } lg:col-span-8 h-[calc(100vh-8rem)] overflow-hidden`}>
             {showChat ? (
               <Chat 
                 clienteId={cliente?.id}
