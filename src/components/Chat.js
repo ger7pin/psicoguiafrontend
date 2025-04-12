@@ -4,26 +4,33 @@ import { toast } from 'sonner';
 import useAuthUser from '../hooks/useAuthUser';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { initializeChat, updateChatMessage } from '../services/chatService';
+import { initializeChat, updateChatMessage, enviarMensaje } from '../services/chatService';
+import { initSocket, getSocket, subscribeToMessages, subscribeToTypingStatus, sendTypingStatus } from '../utils/socketService';
 
 const Chat = ({ clienteId, psicologoId, onClose }) => {
   const [mensajes, setMensajes] = useState([]);
   const [mensaje, setMensaje] = useState('');
   const [archivo, setArchivo] = useState(null);
   const [mostrarEmojis, setMostrarEmojis] = useState(false);
-  const [chatId, setChatId] = useState(null);  // Añadir este estado
+  const [chatId, setChatId] = useState(null);
+  const [usuarioEscribiendo, setUsuarioEscribiendo] = useState(false);
+  const [timeoutId, setTimeoutId] = useState(null);
   const chatRef = useRef(null);
-  const { cliente } = useAuthUser('clientes');
+  const { cliente, token } = useAuthUser('clientes');
 
   useEffect(() => {
     const setupChat = async () => {
-      if (!clienteId || !psicologoId) return;
+      if (!clienteId || !psicologoId || !token) return;
       
       try {
+        // Inicializar Socket.io
+        initSocket(token);
+        
+        // Inicializar chat en Firebase
         const id = await initializeChat(clienteId, psicologoId);
         setChatId(id);
         
-        // Suscribirse a los mensajes
+        // Suscribirse a los mensajes en Firebase
         const q = query(
           collection(db, 'chats', id, 'messages'),
           orderBy('timestamp', 'asc')
@@ -37,7 +44,28 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
           setMensajes(messageList);
         });
 
-        return () => unsubscribe();
+        // Suscribirse a mensajes en tiempo real via Socket.io
+        const unsubscribeSocketMessages = subscribeToMessages((msg) => {
+          // Solo procesamos mensajes que sean para este chat
+          if (msg.chatId === id) {
+            // Los mensajes de Socket.io se guardarán en Firebase automáticamente
+            // por el controlador de mensajes del backend
+            console.log('Mensaje recibido por Socket.io:', msg);
+          }
+        });
+
+        // Suscribirse al estado de escritura
+        const unsubscribeTyping = subscribeToTypingStatus(({ emisorId, escribiendo }) => {
+          if (emisorId === psicologoId || emisorId === clienteId) {
+            setUsuarioEscribiendo(escribiendo);
+          }
+        });
+
+        return () => {
+          unsubscribe();
+          unsubscribeSocketMessages();
+          unsubscribeTyping();
+        };
       } catch (error) {
         console.error('Error al inicializar chat:', error);
         toast.error('Error al inicializar el chat');
@@ -45,7 +73,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
     };
 
     setupChat();
-  }, [clienteId, psicologoId]);
+  }, [clienteId, psicologoId, token]);
 
   useEffect(() => {
     if (chatRef.current) {
@@ -55,6 +83,22 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
 
   const handleInputChange = (e) => {
     setMensaje(e.target.value);
+    
+    // Enviar estado de escritura
+    if (chatId) {
+      // Cancelar el timeout anterior si existe
+      if (timeoutId) clearTimeout(timeoutId);
+      
+      // Enviar señal de escritura
+      sendTypingStatus(psicologoId, true);
+      
+      // Configurar un nuevo timeout para enviar señal de fin de escritura
+      const newTimeoutId = setTimeout(() => {
+        sendTypingStatus(psicologoId, false);
+      }, 1000);
+      
+      setTimeoutId(newTimeoutId);
+    }
   };
 
   const handleEmojiClick = (emojiData) => {
@@ -68,17 +112,24 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
     if (!chatId) return toast.error('Error: Chat no inicializado');
 
     try {
+      // Detener señal de escritura
+      sendTypingStatus(psicologoId, false);
+      if (timeoutId) clearTimeout(timeoutId);
+      
       const messageData = {
         content: mensaje,
         senderId: cliente.id,
         timestamp: serverTimestamp()
       };
 
-      // Añadir mensaje a la subcolección de mensajes
-      await addDoc(collection(db, 'chats', chatId, 'messages'), messageData);
+      // Guardar mensaje en Firebase
+      const docRef = await addDoc(collection(db, 'chats', chatId, 'messages'), messageData);
 
       // Actualizar último mensaje en el documento principal del chat
       await updateChatMessage(chatId, messageData);
+      
+      // Enviar mensaje a través de Socket.io para comunicación en tiempo real
+      await enviarMensaje(chatId, mensaje, psicologoId, cliente.id);
       
       setMensaje('');
       setArchivo(null);
@@ -116,9 +167,22 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
               msg.senderId === cliente.id ? 'bg-blue-500 text-white' : 'bg-gray-100'
             }`}>
               <p>{msg.content}</p>
+              <p className="text-xs mt-1 opacity-60">
+                {msg.timestamp?.toDate ? 
+                  new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 
+                  '...'}
+              </p>
             </div>
           </div>
         ))}
+        
+        {usuarioEscribiendo && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 rounded-lg p-2 text-sm text-gray-500">
+              Escribiendo...
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Chat input */}
