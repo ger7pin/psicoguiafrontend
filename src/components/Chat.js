@@ -23,16 +23,69 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const [enviandoMensaje, setEnviandoMensaje] = useState(false);
   const chatRef = useRef(null);
   
-  // Determinar el tipo de usuario usando localStorage y la URL como respaldo
-  const userType = localStorage.getItem('userType') || 
-                 (typeof window !== 'undefined' && window.location.pathname.includes('/clientes/') ? 
-                  'clientes' : 'psicologos');
+  // Determinar el tipo de usuario correctamente basado en los IDs proporcionados
+  // Si se proporciona clienteId y psicologoId, determinamos el tipo basado en la pantalla actual
+  // Si estamos en el dashboard de psicólogos, el usuario actual es un psicólogo
+  // Si estamos en el dashboard de clientes, el usuario actual es un cliente
+  const determinarTipoUsuario = () => {
+    // Primero intentar obtener del localStorage (más confiable)
+    const storedType = localStorage.getItem('userType');
+    if (storedType === 'clientes' || storedType === 'psicologos') {
+      return storedType;
+    }
+    
+    // Identificar por URL actual
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path.includes('/psicologos/dashboard')) {
+        return 'psicologos';
+      }
+      if (path.includes('/clientes/dashboard')) {
+        return 'clientes';
+      }
+    }
+    
+    // Si no podemos determinar por la URL, usar la lógica basada en IDs
+    // Si el usuario actual es el psicólogo (su ID coincide con psicologoId), entonces es psicólogo
+    // Si el usuario actual es el cliente (su ID coincide con clienteId), entonces es cliente
+    const storedUserId = localStorage.getItem('userId');
+    if (storedUserId && psicologoId && storedUserId == psicologoId) {
+      return 'psicologos';
+    }
+    if (storedUserId && clienteId && storedUserId == clienteId) {
+      return 'clientes';
+    }
+    
+    // Ultimo respaldo - verificar si la URL contiene /clientes/ o /psicologos/
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      if (path.includes('/clientes/')) {
+        return 'clientes';
+      } 
+      return 'psicologos';
+    }
+    
+    // Si todo lo demás falla, asumir cliente como valor predeterminado seguro
+    return 'clientes';
+  };
+  
+  const userType = determinarTipoUsuario();
   
   // Obtener datos del usuario actual y token
   const { cliente: usuarioActual, token } = useAuthUser(userType);
   
   // Usar token del localStorage como respaldo si no está disponible desde useAuthUser
-  const [authToken, setAuthToken] = useState(token || localStorage.getItem('authToken'));
+  // Intentar obtener un token específico para el tipo de usuario si existe
+  const getStoredToken = () => {
+    // Primero intentar obtener un token específico para el tipo
+    const userSpecificToken = localStorage.getItem(`authToken_${userType}`);
+    if (userSpecificToken) return userSpecificToken;
+    
+    // Si no hay token específico, intentar con el genérico
+    return localStorage.getItem('authToken');
+  };
+  
+  const [authToken, setAuthToken] = useState(token || getStoredToken());
   
   // Guardar datos de autenticación en localStorage cuando estén disponibles
   useEffect(() => {
@@ -43,9 +96,11 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
     
     // Si tenemos un token nuevo, guardarlo y actualizarlo en el estado
     if (token && token !== authToken) {
+      // Guardar tanto en el almacenamiento específico como en el genérico
+      localStorage.setItem(`authToken_${userType}`, token);
       localStorage.setItem('authToken', token);
       setAuthToken(token);
-      console.log('Token actualizado:', token);
+      console.log(`Token actualizado para ${userType}:`, token);
     }
   }, [usuarioActual, userType, token, authToken]);
   const usuarioId = usuarioActual?.id;
