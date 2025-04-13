@@ -5,7 +5,7 @@ import useAuthUser from '../hooks/useAuthUser';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { initializeChat, updateChatMessage } from '../services/chatService';
-import { initSocket, subscribeToMessages, subscribeToTypingStatus, sendTypingStatus } from '../utils/socketService';
+import { initSocket, getSocket, subscribeToMessages, subscribeToTypingStatus, sendTypingStatus, sendChatMessage } from '../utils/socketService';
 
 const Chat = ({ clienteId, psicologoId, onClose }) => {
   const [mensajes, setMensajes] = useState([]);
@@ -33,14 +33,19 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
 
   useEffect(() => {
     const setupChat = async () => {
-      if (!clienteId || !psicologoId || !token) return;
+      if (!clienteId || !psicologoId || !token) {
+        console.log('Faltan datos para inicializar chat:', { clienteId, psicologoId, token });
+        return;
+      }
       
       try {
-        // Inicializar Socket.io
-        initSocket(token);
+        // Inicializar Socket.io con el token renovado
+        const socket = initSocket(token);
+        console.log('Socket inicializado:', socket ? 'Conectado' : 'Error al conectar');
         
         // Inicializar chat en Firebase
         const id = await initializeChat(clienteId, psicologoId);
+        console.log('Chat inicializado con ID:', id);
         setChatId(id);
         
         // Suscribirse a los mensajes en Firebase
@@ -86,7 +91,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
     };
 
     setupChat();
-  }, [clienteId, psicologoId, token]);
+  }, [clienteId, psicologoId, token, userType, usuarioActual]);
 
   useEffect(() => {
     if (chatRef.current) {
@@ -142,16 +147,28 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
       await updateChatMessage(chatId, messageData);
       
       // Enviar mensaje a través de Socket.io para comunicación en tiempo real
-      // Usar la función directamente del contexto actual
-      const socket = initSocket(token);
-      if (socket && socket.connected) {
-        socket.emit('chat message', {
-          chatId,
-          content: mensaje,
-          senderId: usuarioId,
-          receptorId: userType === 'clientes' ? psicologoId : clienteId, // Si es cliente, envía al psicólogo y viceversa
-          timestamp: new Date()
-        });
+      const receptorId = userType === 'clientes' ? psicologoId : clienteId; // Si es cliente, envía al psicólogo y viceversa
+      
+      // Usando la función helper de socketService
+      const mensajeEnviado = sendChatMessage(receptorId, {
+        chatId,
+        content: mensaje,
+        senderId: usuarioId,
+        timestamp: new Date()
+      });
+      
+      if (!mensajeEnviado) {
+        console.log('Reintentando con socket directo...');
+        const socket = getSocket();
+        if (socket && socket.connected) {
+          socket.emit('chat message', {
+            chatId,
+            content: mensaje,
+            senderId: usuarioId,
+            receptorId,
+            timestamp: new Date()
+          });
+        }
       }
       
       setMensaje('');
