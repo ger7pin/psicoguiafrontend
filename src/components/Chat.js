@@ -51,8 +51,8 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const usuarioId = usuarioActual?.id;
 
   // Obtener el nombre del contacto
-  // Función para obtener el nombre del contacto de localStorage
-  const obtenerNombreContactoLocal = () => {
+  // Función para obtener el nombre del contacto de localStorage (con useCallback para evitar recreaciones)
+  const obtenerNombreContactoLocal = React.useCallback(() => {
     try {
       const idBuscado = userType === 'clientes' ? psicologoId : clienteId;
       
@@ -72,7 +72,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
       console.error('Error obteniendo nombre local:', e);
       return 'Contacto';
     }
-  };
+  }, [userType, psicologoId, clienteId]); // Dependencias necesarias
   
   useEffect(() => {
     const obtenerNombreContacto = async () => {

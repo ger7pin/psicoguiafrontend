@@ -1,4 +1,4 @@
-import { db, isFirebaseConfigured, getFirebaseConnectionStatus } from '../firebase/config';
+import { db, getFirebaseConnectionStatus } from '../firebase/config';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection } from 'firebase/firestore';
 import { sendChatMessage } from '../utils/socketService';
 
@@ -152,6 +152,13 @@ export const updateChatMessage = async (chatId, message) => {
       return false;
     }
     
+    // Verificar si estamos en modo demo
+    const firebaseStatus = getFirebaseConnectionStatus();
+    if (firebaseStatus.isDemo) {
+      console.log('Firebase en modo demo - No se actualiza el documento principal');
+      return true;
+    }
+
     // Asegurarnos que el chatId es seguro
     const cleanChatId = String(chatId).replace(/[\/.#$\[\]]/g, '_');
     
@@ -192,56 +199,93 @@ export const enviarMensaje = async (chatId, mensaje, receptorId, emisorId) => {
     
     console.log(`Enviando mensaje en chat ${cleanChatId} a ${receptorIdStr} desde ${emisorIdStr}`);
     
-    // Crear datos del mensaje
+    // Crear datos del mensaje con ID único
+    const messageId = `msg_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
     const mensajeData = {
       chatId: cleanChatId,
       content: mensaje,
       senderId: emisorIdStr,
       receptorId: receptorIdStr,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      id: messageId
     };
     
-    // Guardar mensaje en Firebase primero (más confiable)
-    try {
-      // 1. Guardar mensaje en la subcolección
-      const mensajesRef = collection(db, CHATS_COLLECTION, cleanChatId, MESSAGES_SUBCOLLECTION);
-      const docRef = doc(mensajesRef);
-      await setDoc(docRef, {
+    // Verificar si estamos en modo demo
+    const firebaseStatus = getFirebaseConnectionStatus();
+    
+    // Si estamos en modo demo, usar caché local
+    if (firebaseStatus.isDemo) {
+      console.log('Firebase en modo demo - Guardando mensaje en caché local');
+      
+      // Inicializar la caché si no existe
+      if (!localMessagesCache[cleanChatId]) {
+        localMessagesCache[cleanChatId] = {
+          mensajes: [],
+          metadata: {
+            clienteId: emisorIdStr.includes('cliente') ? emisorIdStr : receptorIdStr,
+            psicologoId: emisorIdStr.includes('psicologo') ? emisorIdStr : receptorIdStr,
+            createdAt: new Date().toISOString()
+          }
+        };
+      }
+      
+      // Guardar mensaje en caché local
+      localMessagesCache[cleanChatId].mensajes.push(mensajeData);
+      localMessagesCache[cleanChatId].metadata.lastMessage = {
         content: mensaje,
-        senderId: emisorIdStr,
-        receptorId: receptorIdStr,
-        timestamp: serverTimestamp(),
-        id: docRef.id
-      });
+        timestamp: new Date().toISOString(),
+        senderId: emisorIdStr
+      };
       
-      // 2. Actualizar el documento principal
-      const chatRef = doc(db, CHATS_COLLECTION, cleanChatId);
-      await updateDoc(chatRef, {
-        lastMessage: {
+      console.log('Mensaje guardado en caché local');
+    } else {
+      // Guardar mensaje en Firebase
+      try {
+        // 1. Guardar mensaje en la subcolección
+        const mensajesRef = collection(db, CHATS_COLLECTION, cleanChatId, MESSAGES_SUBCOLLECTION);
+        const docRef = doc(mensajesRef);
+        await setDoc(docRef, {
           content: mensaje,
+          senderId: emisorIdStr,
+          receptorId: receptorIdStr,
           timestamp: serverTimestamp(),
-          senderId: emisorIdStr
-        },
-        updatedAt: serverTimestamp()
-      });
-      
-      console.log('Mensaje guardado correctamente en Firebase');
-    } catch (firebaseError) {
-      console.error('Error al guardar mensaje en Firebase:', firebaseError);
-      // Continuamos para intentar enviar por socket aún si falla Firestore
+          id: docRef.id
+        });
+        
+        // 2. Actualizar el documento principal
+        const chatRef = doc(db, CHATS_COLLECTION, cleanChatId);
+        await updateDoc(chatRef, {
+          lastMessage: {
+            content: mensaje,
+            timestamp: serverTimestamp(),
+            senderId: emisorIdStr
+          },
+          updatedAt: serverTimestamp()
+        });
+        
+        console.log('Mensaje guardado correctamente en Firebase');
+      } catch (firebaseError) {
+        console.error('Error al guardar mensaje en Firebase:', firebaseError);
+        // Guardar en caché local como respaldo
+        if (!localMessagesCache[cleanChatId]) {
+          localMessagesCache[cleanChatId] = { mensajes: [], metadata: {} };
+        }
+        localMessagesCache[cleanChatId].mensajes.push(mensajeData);
+        console.warn('Mensaje guardado en caché local como respaldo');
+      }
     }
     
     // Enviar mensaje por Socket.io para comunicación en tiempo real
     try {
       const enviado = sendChatMessage(receptorIdStr, mensajeData);
       if (!enviado) {
-        console.warn('No se pudo enviar mensaje por socket, pero se guardó en Firebase');
+        console.warn('No se pudo enviar mensaje por socket, pero se guardó en Firebase/caché');
       } else {
         console.log('Mensaje enviado por socket correctamente');
       }
     } catch (socketError) {
       console.error('Error enviando mensaje por socket:', socketError);
-      // El mensaje ya se guardó en Firebase, así que no es crítico
+      // El mensaje ya se guardó en Firebase/caché, así que no es crítico
     }
 
     return true;
@@ -251,7 +295,7 @@ export const enviarMensaje = async (chatId, mensaje, receptorId, emisorId) => {
   }
 };
 
-// Obtener mensajes de un chat desde Firebase
+// Obtener mensajes de un chat desde Firebase o caché local
 export const obtenerMensajes = async (chatId) => {
   try {
     if (!chatId) {
@@ -263,14 +307,71 @@ export const obtenerMensajes = async (chatId) => {
     const cleanChatId = String(chatId).replace(/[\/.#$\[\]]/g, '_');
     console.log('Obteniendo mensajes para chat:', cleanChatId);
     
-    // Crear referencia a la subcolección de mensajes
-    const mensajesRef = collection(db, CHATS_COLLECTION, cleanChatId, MESSAGES_SUBCOLLECTION);
+    // Verificar si estamos en modo demo
+    const firebaseStatus = getFirebaseConnectionStatus();
     
-    // Con colección y referencia correctamente definidos, podemos dejar que
-    // el componente Chat use onSnapshot para escuchar cambios en tiempo real
+    // Si estamos en modo demo, usar caché local
+    if (firebaseStatus.isDemo) {
+      console.log('Firebase en modo demo - Usando caché local para mensajes');
+      
+      // Inicializar caché si no existe
+      if (!localMessagesCache[cleanChatId]) {
+        localMessagesCache[cleanChatId] = {
+          mensajes: [],
+          metadata: {
+            createdAt: new Date().toISOString(),
+            lastMessage: {
+              content: "Inicio de conversación (caché local)",
+              timestamp: new Date().toISOString(),
+              senderId: "sistema"
+            }
+          }
+        };
+      }
+      
+      // Retornar un objeto simulado compatible con la API de Firestore
+      return {
+        _isLocalCache: true,
+        getLocalMessages: () => localMessagesCache[cleanChatId].mensajes,
+        simulateSnapshot: (callback) => {
+          // Simular un snapshot con los mensajes en caché
+          callback({
+            docs: localMessagesCache[cleanChatId].mensajes.map(msg => ({
+              id: msg.id || `local_${Date.now()}`,
+              data: () => msg
+            }))
+          });
+          
+          // Retornar función de limpieza
+          return () => {};
+        }
+      };
+    }
+    
+    // Si Firebase está disponible, retornar la referencia a la colección
+    const mensajesRef = collection(db, CHATS_COLLECTION, cleanChatId, MESSAGES_SUBCOLLECTION);
     return mensajesRef;
   } catch (error) {
     console.error('Error al obtener referencia de mensajes:', error);
-    throw error;
+    // En caso de error, retornar un objeto que simula la colección vacía
+    return {
+      _isLocalCache: true,
+      getLocalMessages: () => [],
+      simulateSnapshot: (callback) => {
+        callback({ docs: [] });
+        return () => {};
+      }
+    };
   }
+};
+
+// Función para verificar si la referencia de mensajes es una caché local
+export const isLocalCacheRef = (ref) => {
+  return ref && ref._isLocalCache === true;
+};
+
+// Obtener mensajes de caché local
+export const getMessagesFromLocalCache = (chatId) => {
+  const cleanChatId = String(chatId).replace(/[\/.#$\[\]]/g, '_');
+  return localMessagesCache[cleanChatId]?.mensajes || [];
 };
