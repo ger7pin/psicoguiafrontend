@@ -1,4 +1,4 @@
-import { db } from '../firebase/config';
+import { db, isFirebaseConfigured, getFirebaseConnectionStatus } from '../firebase/config';
 import { doc, getDoc, setDoc, updateDoc, serverTimestamp, collection } from 'firebase/firestore';
 import { sendChatMessage } from '../utils/socketService';
 
@@ -7,8 +7,21 @@ const CHATS_COLLECTION = 'chats';
 // Constante para la subcolección de mensajes
 const MESSAGES_SUBCOLLECTION = 'mensajes';
 
+// Cache local para mensajes cuando Firebase no está disponible
+const localMessagesCache = {};
+
+// Verificar la configuración de Firebase
+const firebaseStatus = getFirebaseConnectionStatus();
+if (firebaseStatus.isDemo) {
+  console.warn('⚠️ ADVERTENCIA: Chat usando configuración de Firebase de demostración');
+  console.warn('Los mensajes solo se enviarán por Socket.io y se almacenarán en caché local');
+}
+
 export const initializeChat = async (clienteId, psicologoId) => {
   try {
+    // Verificar estado de Firebase antes de proceder
+    const firebaseStatus = getFirebaseConnectionStatus();
+    
     // Verificar que los IDs existan y sean válidos
     if (!clienteId || !psicologoId || clienteId === 'undefined' || psicologoId === 'undefined') {
       console.error('Error: clienteId o psicologoId inválidos', { clienteId, psicologoId });
@@ -33,7 +46,29 @@ export const initializeChat = async (clienteId, psicologoId) => {
     const chatId = `${clienteIdStr}_${psicologoIdStr}`;
     console.log('Usando ID de chat:', chatId);
     
-    // Verificar que tengamos una instancia válida de Firestore
+    // Verificar si estamos en modo demo o con problemas de conexión
+    if (firebaseStatus.isDemo) {
+      console.log('Firebase en modo demo. Usando caché local para el chat');
+      // Crear estructura del chat en cache local
+      if (!localMessagesCache[chatId]) {
+        localMessagesCache[chatId] = {
+          mensajes: [],
+          metadata: {
+            clienteId: clienteIdStr,
+            psicologoId: psicologoIdStr,
+            createdAt: new Date().toISOString(),
+            lastMessage: {
+              content: "Inicio de conversación (caché local)",
+              timestamp: new Date().toISOString(),
+              senderId: "sistema"
+            }
+          }
+        };
+      }
+      return chatId;
+    }
+    
+    // Continuamos con Firebase si está disponible
     if (!db) {
       console.error('Error: la instancia de Firestore no está disponible');
       throw new Error('Firestore no inicializado');
