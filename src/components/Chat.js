@@ -54,9 +54,9 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
       
       // Buscar en las distintas fuentes de datos en localStorage
       let todosContactos = [];
-      try { todosContactos = [...todosContactos, ...JSON.parse(localStorage.getItem('contactos') || '[]')]; } catch (e) {e}
-      try { todosContactos = [...todosContactos, ...JSON.parse(localStorage.getItem('psicologos') || '[]')]; } catch (e) {e}
-      try { todosContactos = [...todosContactos, ...JSON.parse(localStorage.getItem('clientes') || '[]')]; } catch (e) {e}
+      try { todosContactos = [...todosContactos, ...JSON.parse(localStorage.getItem('contactos') || '[]')]; } catch (e) {console.error('Error al obtener contactos:', e)}
+      try { todosContactos = [...todosContactos, ...JSON.parse(localStorage.getItem('psicologos') || '[]')]; } catch (e) {console.error('Error al obtener psicólogos:', e)}
+      try { todosContactos = [...todosContactos, ...JSON.parse(localStorage.getItem('clientes') || '[]')]; } catch (e) {console.error('Error al obtener clientes:', e)}
       
       const contacto = todosContactos.find(c => c.id == idBuscado);
       if (contacto?.nombre) {
