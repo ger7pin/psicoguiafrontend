@@ -36,12 +36,7 @@ const ContactList = ({ contactos, onContactClick }) => {
         {filteredContacts.map((contacto) => (
           <div
             key={contacto.id}
-            onClick={() => onContactClick({
-              id: contacto.id,
-              nombre: contacto.nombre,
-              email: contacto.email,
-              tipo: 'psicologo'
-            })}
+            onClick={() => onContactClick(contacto)}
             className="flex items-center p-4 hover:bg-blue-50/50 cursor-pointer border-b border-gray-200/20"
           >
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-medium shadow-sm">
