@@ -15,6 +15,8 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const [chatId, setChatId] = useState(null);
   const [usuarioEscribiendo, setUsuarioEscribiendo] = useState(false);
   const [timeoutId, setTimeoutId] = useState(null);
+  const [contactoNombre, setContactoNombre] = useState('Contacto');
+  const [enviandoMensaje, setEnviandoMensaje] = useState(false);
   const chatRef = useRef(null);
   
   // Determinar el tipo de usuario basado en la URL actual
@@ -30,6 +32,33 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
     }
   }, [usuarioActual, userType]);
   const usuarioId = usuarioActual?.id;
+
+  // Obtener el nombre del contacto
+  useEffect(() => {
+    const obtenerNombreContacto = async () => {
+      try {
+        // Determinar qué endpoint usar según el tipo de usuario
+        const endpoint = userType === 'clientes' ? 
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/psicologos/${psicologoId}` : 
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clientes/${clienteId}`;
+        
+        const response = await fetch(endpoint, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setContactoNombre(data.nombre || 'Contacto');
+        }
+      } catch (error) {
+        console.error('Error al obtener nombre del contacto:', error);
+      }
+    };
+    
+    if ((userType === 'clientes' && psicologoId) || (userType === 'psicologos' && clienteId)) {
+      obtenerNombreContacto();
+    }
+  }, [userType, clienteId, psicologoId]);
 
   useEffect(() => {
     const setupChat = async () => {
@@ -128,6 +157,10 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
     if (!mensaje.trim() && !archivo) return;
     if (!usuarioId) return toast.error('Error: Usuario no autenticado');
     if (!chatId) return toast.error('Error: Chat no inicializado');
+    
+    // Evitar múltiples envíos
+    if (enviandoMensaje) return;
+    setEnviandoMensaje(true);
 
     try {
       // Detener señal de escritura
@@ -176,6 +209,8 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
       toast.error('Error al enviar el mensaje');
+    } finally {
+      setEnviandoMensaje(false);
     }
   };
 
@@ -184,7 +219,9 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
       {/* Chat header */}
       <div className="flex items-center justify-between p-4 border-b">
         <div className="flex-1">
-          <h3 className="text-lg font-semibold">Chat</h3>
+          <h3 className="text-lg font-semibold">
+            Chat con {contactoNombre}
+          </h3>
         </div>
         <button
           onClick={onClose}
@@ -249,10 +286,12 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
           />
           <button
             type="submit"
-            disabled={!mensaje.trim() && !archivo}
-            className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50"
+            disabled={((!mensaje.trim() && !archivo) || enviandoMensaje)}
+            className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 flex items-center justify-center"
           >
-            Enviar
+            {enviandoMensaje ? (
+              <span className="inline-block w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+            ) : 'Enviar'}
           </button>
         </form>
       </div>
