@@ -16,7 +16,11 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const [usuarioEscribiendo, setUsuarioEscribiendo] = useState(false);
   const [timeoutId, setTimeoutId] = useState(null);
   const chatRef = useRef(null);
-  const { cliente, token } = useAuthUser('clientes');
+  
+  // Determinar automáticamente si es cliente o psicólogo basado en los IDs proporcionados
+  const userType = clienteId === localStorage.getItem('userId') ? 'clientes' : 'psicologos';
+  const { cliente: usuarioActual, token } = useAuthUser(userType);
+  const usuarioId = usuarioActual?.id;
 
   useEffect(() => {
     const setupChat = async () => {
@@ -108,7 +112,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const enviarMensaje = async (e) => {
     e.preventDefault();
     if (!mensaje.trim() && !archivo) return;
-    if (!cliente?.id) return toast.error('Error: Usuario no autenticado');
+    if (!usuarioId) return toast.error('Error: Usuario no autenticado');
     if (!chatId) return toast.error('Error: Chat no inicializado');
 
     try {
@@ -118,7 +122,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
       
       const messageData = {
         content: mensaje,
-        senderId: cliente.id,
+        senderId: usuarioId,
         timestamp: serverTimestamp()
       };
 
@@ -135,8 +139,8 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
         socket.emit('chat message', {
           chatId,
           content: mensaje,
-          senderId: cliente.id,
-          receptorId: psicologoId,
+          senderId: usuarioId,
+          receptorId: userType === 'clientes' ? psicologoId : clienteId, // Si es cliente, envía al psicólogo y viceversa
           timestamp: new Date()
         });
       }
@@ -171,10 +175,10 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
         {mensajes.map((msg) => (
           <div
             key={msg.id}
-            className={`flex ${msg.senderId === cliente.id ? 'justify-end' : 'justify-start'}`}
+            className={`flex ${msg.senderId === usuarioId ? 'justify-end' : 'justify-start'}`}
           >
             <div className={`max-w-[70%] rounded-lg p-3 ${
-              msg.senderId === cliente.id ? 'bg-blue-500 text-white' : 'bg-gray-100'
+              msg.senderId === usuarioId ? 'bg-blue-500 text-white' : 'bg-gray-100'
             }`}>
               <p>{msg.content}</p>
               <p className="text-xs mt-1 opacity-60">

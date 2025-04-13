@@ -43,15 +43,15 @@ export default function CalendarSection({ selectedDate, setSelectedDate, citas, 
       }
       
       // Si hay un manejador externo, usarlo
-      if (setCitaDetails) {
-        setCitaDetails(citaConDetalles);
+      if (externalSetCitaDetails) {
+        externalSetCitaDetails(citaConDetalles);
       } else {
         // De lo contrario, usar el estado interno
         setInternalCitaDetails(citaConDetalles);
       }
     } else {
-      if (setCitaDetails) {
-        setCitaDetails(null);
+      if (externalSetCitaDetails) {
+        externalSetCitaDetails(null);
       } else {
         setInternalCitaDetails(null);
       }
