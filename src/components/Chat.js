@@ -2,10 +2,14 @@ import React, { useState, useEffect, useRef } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import { toast } from 'sonner';
 import useAuthUser from '../hooks/useAuthUser';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { initializeChat, updateChatMessage } from '../services/chatService';
-import { initSocket, getSocket, subscribeToMessages, subscribeToTypingStatus, sendTypingStatus, sendChatMessage } from '../utils/socketService';
+import { initializeChat, updateChatMessage, obtenerMensajes, enviarMensaje as enviarMensajeService } from '../services/chatService';
+import { initSocket, getSocket, subscribeToMessages, subscribeToTypingStatus, sendTypingStatus, reconnectSocket } from '../utils/socketService';
+
+// Constantes para nombres de colecciones
+const CHATS_COLLECTION = 'chats';
+const MESSAGES_SUBCOLLECTION = 'mensajes';
 
 const Chat = ({ clienteId, psicologoId, onClose }) => {
   const [mensajes, setMensajes] = useState([]);
@@ -192,7 +196,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
             // Asegurarse de que clienteId y psicologoId sean strings y manejar cualquier caso nulo
             const clienteIdStr = clienteId ? String(clienteId) : 'unknown';
             const psicologoIdStr = psicologoId ? String(psicologoId) : 'unknown';
-            chatID = `${clienteIdStr.replace(/[/.]/g, '_')}_${psicologoIdStr.replace(/[/.]/g, '_')}`;
+            chatID = `${clienteIdStr.replace(/[/.#$\[\]]/g, '_')}_${psicologoIdStr.replace(/[/.#$\[\]]/g, '_')}`;
             console.log('Usando ID de chat de respaldo:', chatID);
           } catch (strError) {
             // Último recurso si todo falla
@@ -213,42 +217,75 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
           // Continuamos igual para al menos mostrar mensajes de Firebase
         }
         
-        // Suscribirse a los mensajes en Firebase
-        const q = query(
-          collection(db, 'chats', chatID, 'messages'), // Usar chatID en lugar de id
-          orderBy('timestamp', 'asc')
-        );
+        // Suscribirse a los mensajes en Firebase usando la estructura correcta
+        let unsubscribe;
+        let unsubscribeSocketMessages;
+        let unsubscribeTyping;
+        
+        try {
+          const mensajesRef = collection(db, CHATS_COLLECTION, chatID, MESSAGES_SUBCOLLECTION);
+          const q = query(
+            mensajesRef,
+            orderBy('timestamp', 'asc')
+          );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
-          const messageList = snapshot.docs.map(doc => ({
-            id: doc.id,
-            ...doc.data()
-          }));
-          setMensajes(messageList);
-        });
+          unsubscribe = onSnapshot(q, (snapshot) => {
+            try {
+              const messageList = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+              }));
+              setMensajes(messageList);
+              console.log(`Recibidos ${messageList.length} mensajes de Firebase`);
+            } catch (docError) {
+              console.error('Error procesando documentos:', docError);
+            }
+          }, (error) => {
+            console.error('Error en la suscripción a mensajes:', error);
+          });
 
-        // Suscribirse a mensajes en tiempo real via Socket.io
-        const unsubscribeSocketMessages = subscribeToMessages((msg) => {
-          // Solo procesamos mensajes que sean para este chat
-          if (msg.chatId === chatID) {
-            // Los mensajes de Socket.io se guardarán en Firebase automáticamente
-            // por el controlador de mensajes del backend
-            console.log('Mensaje recibido por Socket.io:', msg);
-          }
-        });
+          // Suscribirse a mensajes en tiempo real via Socket.io
+          unsubscribeSocketMessages = subscribeToMessages((msg) => {
+            try {
+              // Solo procesamos mensajes que sean para este chat
+              if (msg.chatId === chatID) {
+                // Los mensajes de Socket.io se guardarán en Firebase automáticamente
+                // por el controlador de mensajes del backend
+                console.log('Mensaje recibido por Socket.io:', msg);
+              }
+            } catch (msgError) {
+              console.error('Error procesando mensaje de socket:', msgError);
+            }
+          });
 
-        // Suscribirse al estado de escritura
-        const unsubscribeTyping = subscribeToTypingStatus(({ emisorId, escribiendo }) => {
-          if (emisorId === psicologoId || emisorId === clienteId) {
-            setUsuarioEscribiendo(escribiendo);
-          }
-        });
-
-        return () => {
-          unsubscribe();
-          unsubscribeSocketMessages();
-          unsubscribeTyping();
-        };
+          // Suscribirse al estado de escritura
+          unsubscribeTyping = subscribeToTypingStatus(({ emisorId, escribiendo }) => {
+            try {
+              if (emisorId === psicologoId || emisorId === clienteId) {
+                setUsuarioEscribiendo(escribiendo);
+              }
+            } catch (typingError) {
+              console.error('Error procesando estado de escritura:', typingError);
+            }
+          });
+          
+          console.log('Suscripciones establecidas correctamente');
+          
+          // Retornar función de limpieza
+          return () => {
+            if (unsubscribe) unsubscribe();
+            if (unsubscribeSocketMessages) unsubscribeSocketMessages();
+            if (unsubscribeTyping) unsubscribeTyping();
+            console.log('Suscripciones limpiadas');
+          };
+        } catch (firebaseError) {
+          console.error('Error configurando suscripciones a Firebase:', firebaseError);
+          // Retornar función de limpieza mínima
+          return () => {
+            if (unsubscribeSocketMessages) unsubscribeSocketMessages();
+            if (unsubscribeTyping) unsubscribeTyping();
+          };
+        }
       } catch (error) {
         console.error('Error al inicializar chat:', error);
         toast.error('Error al inicializar el chat');
@@ -291,13 +328,20 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const enviarMensaje = async (e) => {
     e.preventDefault();
     if (!mensaje.trim() && !archivo) return;
-    if (!usuarioId) {
-      toast.error('Error: Usuario no autenticado');
-      // Intentar obtener el ID de localStorage como último recurso
+    
+    // Verificar que tenemos ID de usuario y usar respaldo si es necesario
+    let senderUserId = usuarioId;
+    if (!senderUserId) {
+      console.warn('Usuario no autenticado, buscando ID en localStorage');
       const storedUserId = localStorage.getItem('userId');
-      if (!storedUserId) return;
-      usuarioId = storedUserId;
+      if (!storedUserId) {
+        toast.error('Error: No se puede identificar al usuario');
+        return;
+      }
+      senderUserId = storedUserId;
     }
+    
+    // Verificar que tenemos chatId
     if (!chatId) {
       toast.error('Error: Chat no inicializado');
       return;
@@ -316,56 +360,48 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
         console.error('Error al enviar estado de escritura:', typingErr);
       }
       
-      const messageData = {
-        content: mensaje,
-        senderId: usuarioId,
-        timestamp: serverTimestamp()
-      };
-
-      // Guardar mensaje en Firebase con manejo de errores
-      try {
-        await addDoc(collection(db, 'chats', chatId, 'messages'), messageData);
-        
-        // Si el mensaje se guardó correctamente en Firebase, intentar actualizar el documento principal
-        try {
-          await updateChatMessage(chatId, messageData);
-        } catch (updateErr) {
-          console.error('Error al actualizar chat document:', updateErr);
-          // Continuamos igualmente para al menos mostrar el mensaje en la UI
-        }
-      } catch (firestoreErr) {
-        console.error('Error al guardar mensaje en Firebase:', firestoreErr);
-        toast.error('Error al guardar mensaje');
-        throw firestoreErr; // Propagar el error para abortar el envío
+      // Limpiar ID del chat para evitar problemas con Firebase
+      const cleanChatId = String(chatId).replace(/[\/\.#$\[\]]/g, '_');
+      
+      // Calcular ID del receptor
+      const receptorId = userType === 'clientes' ? psicologoId : clienteId;
+      if (!receptorId) {
+        throw new Error('ID del receptor no disponible');
       }
       
-      // Enviar mensaje a través de Socket.io para comunicación en tiempo real
-      const receptorId = userType === 'clientes' ? psicologoId : clienteId; // Si es cliente, envía al psicólogo y viceversa
+      console.log(`Enviando mensaje en chat ${cleanChatId} desde ${senderUserId} a ${receptorId}`);
       
-      // Usando la función helper de socketService
-      const mensajeEnviado = sendChatMessage(receptorId, {
-        chatId,
+      // Añadir mensaje a la UI para feedback inmediato
+      const nuevoMensaje = {
+        id: `temp_${Date.now()}`,
+        chatId: cleanChatId,
         content: mensaje,
-        senderId: usuarioId,
+        senderId: senderUserId,
         timestamp: new Date()
-      });
+      };
       
-      if (!mensajeEnviado) {
-        console.log('Reintentando con socket directo...');
-        const socket = getSocket();
-        if (socket && socket.connected) {
-          socket.emit('chat message', {
-            chatId,
-            content: mensaje,
-            senderId: usuarioId,
-            receptorId,
-            timestamp: new Date()
-          });
-        }
+      // Agregarlo localmente al estado
+      setMensajes(prev => [...prev, nuevoMensaje]);
+      
+      // Hacer scroll al último mensaje
+      if (chatRef.current) {
+        setTimeout(() => {
+          chatRef.current.scrollTop = chatRef.current.scrollHeight;
+        }, 100);
       }
       
+      // Usar el servicio centralizado para enviar mensajes (maneja tanto Firebase como Socket.io)
+      const enviado = await enviarMensajeService(cleanChatId, mensaje, receptorId, senderUserId);
+      
+      if (!enviado) {
+        toast.warning('Mensaje guardado localmente, pero puede haber problemas de conexión');
+      }
+      
+      // Limpiar la interfaz
       setMensaje('');
       setArchivo(null);
+      setMostrarEmojis(false);
+      
     } catch (error) {
       console.error('Error al enviar mensaje:', error);
       toast.error('Error al enviar el mensaje');
