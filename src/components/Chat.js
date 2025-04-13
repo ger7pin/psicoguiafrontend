@@ -19,36 +19,73 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const [enviandoMensaje, setEnviandoMensaje] = useState(false);
   const chatRef = useRef(null);
   
-  // Determinar el tipo de usuario basado en la URL actual
-  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
-  const userType = pathname.includes('/clientes/') ? 'clientes' : 'psicologos';
+  // Determinar el tipo de usuario usando localStorage y la URL como respaldo
+  const userType = localStorage.getItem('userType') || 
+                 (typeof window !== 'undefined' && window.location.pathname.includes('/clientes/') ? 
+                  'clientes' : 'psicologos');
+  
+  // Obtener datos del usuario actual y token
   const { cliente: usuarioActual, token } = useAuthUser(userType);
   
-  // Guardar el ID del usuario en localStorage cuando esté disponible
+  // Usar token del localStorage como respaldo si no está disponible desde useAuthUser
+  const [authToken, setAuthToken] = useState(token || localStorage.getItem('authToken'));
+  
+  // Guardar datos de autenticación en localStorage cuando estén disponibles
   useEffect(() => {
     if (usuarioActual?.id) {
       localStorage.setItem('userId', usuarioActual.id);
       localStorage.setItem('userType', userType);
     }
-  }, [usuarioActual, userType]);
+    
+    // Si tenemos un token nuevo, guardarlo y actualizarlo en el estado
+    if (token && token !== authToken) {
+      localStorage.setItem('authToken', token);
+      setAuthToken(token);
+      console.log('Token actualizado:', token);
+    }
+  }, [usuarioActual, userType, token, authToken]);
   const usuarioId = usuarioActual?.id;
 
   // Obtener el nombre del contacto
   useEffect(() => {
     const obtenerNombreContacto = async () => {
       try {
-        // Determinar qué endpoint usar según el tipo de usuario
+        // Usar endpoint para obtener todos los usuarios y filtrar por ID localmente
+        // Esto evita problemas de rutas no existentes para IDs específicos
         const endpoint = userType === 'clientes' ? 
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/psicologos/${psicologoId}` : 
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clientes/${clienteId}`;
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/psicologos` : 
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clientes`;
+        
+        console.log('Obteniendo datos de contacto desde:', endpoint);
         
         const response = await fetch(endpoint, {
           credentials: 'include'
         });
         
         if (response.ok) {
-          const data = await response.json();
-          setContactoNombre(data.nombre || 'Contacto');
+          const listaUsuarios = await response.json();
+          console.log('Usuarios obtenidos:', listaUsuarios.length || 0);
+          
+          // Buscar el usuario específico por ID
+          const idBuscado = userType === 'clientes' ? psicologoId : clienteId;
+          const usuarioEncontrado = Array.isArray(listaUsuarios) ? 
+            listaUsuarios.find(u => u.id == idBuscado) : null;
+          
+          if (usuarioEncontrado) {
+            console.log('Usuario encontrado:', usuarioEncontrado);
+            setContactoNombre(usuarioEncontrado.nombre || 'Contacto');
+          } else {
+            console.log('Usuario no encontrado con ID:', idBuscado);
+            // Si no encuentra el usuario, intentar obtener información del localStorage
+            const contactosGuardados = JSON.parse(localStorage.getItem('contactos') || '[]');
+            const contactoGuardado = contactosGuardados.find(c => c.id == idBuscado);
+            
+            if (contactoGuardado) {
+              setContactoNombre(contactoGuardado.nombre || 'Contacto');
+            } else {
+              setContactoNombre(`${userType === 'clientes' ? 'Psicólogo' : 'Cliente'} #${idBuscado}`);
+            }
+          }
         }
       } catch (error) {
         console.error('Error al obtener nombre del contacto:', error);
@@ -62,15 +99,43 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
 
   useEffect(() => {
     const setupChat = async () => {
-      if (!clienteId || !psicologoId || !token) {
-        console.log('Faltan datos para inicializar chat:', { clienteId, psicologoId, token });
+      if (!clienteId || !psicologoId) {
+        console.log('Faltan datos de usuarios para inicializar chat:', { clienteId, psicologoId });
         return;
       }
       
+      // Usar el token disponible (desde el hook o el localStorage)
+      const currentToken = token || authToken || localStorage.getItem('authToken');
+      
+      if (!currentToken) {
+        console.log('No hay token disponible para inicializar el chat');
+        // Intentar renovar la sesión antes de abandonar
+        try {
+          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/renew-token`, {
+            method: 'GET',
+            credentials: 'include'
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            localStorage.setItem('authToken', data.token);
+            setAuthToken(data.token);
+            console.log('Token renovado, reintentando...');
+            // Continuar con el token renovado
+          } else {
+            return; // Abandonar si no se pudo renovar
+          }
+        } catch (err) {
+          console.error('Error renovando token:', err);
+          return;
+        }
+      }
+      
       try {
-        // Inicializar Socket.io con el token renovado
-        const socket = initSocket(token);
-        console.log('Socket inicializado:', socket ? 'Conectado' : 'Error al conectar');
+        // Inicializar Socket.io con el token disponible
+        const currentToken = token || authToken || localStorage.getItem('authToken');
+        const socket = initSocket(currentToken);
+        console.log('Socket inicializado:', socket ? 'Conectado' : 'Error al conectar', { tokenUsado: currentToken ? 'Disponible' : 'No disponible' });
         
         // Inicializar chat en Firebase
         const id = await initializeChat(clienteId, psicologoId);
@@ -120,7 +185,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
     };
 
     setupChat();
-  }, [clienteId, psicologoId, token, userType, usuarioActual]);
+  }, [clienteId, psicologoId, token, authToken, userType, usuarioActual]);
 
   useEffect(() => {
     if (chatRef.current) {
