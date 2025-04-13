@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import EmojiPicker from 'emoji-picker-react';
 import { toast } from 'sonner';
 import useAuthUser from '../hooks/useAuthUser';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, doc, setDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/config';
-import { initializeChat, updateChatMessage, obtenerMensajes, enviarMensaje as enviarMensajeService } from '../services/chatService';
-import { initSocket, getSocket, subscribeToMessages, subscribeToTypingStatus, sendTypingStatus, reconnectSocket } from '../utils/socketService';
+import { initializeChat, enviarMensaje as enviarMensajeService } from '../services/chatService';
+import { initSocket, subscribeToMessages, subscribeToTypingStatus, sendTypingStatus } from '../utils/socketService';
 
 // Constantes para nombres de colecciones
 const CHATS_COLLECTION = 'chats';
@@ -128,7 +128,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
     if ((userType === 'clientes' && psicologoId) || (userType === 'psicologos' && clienteId)) {
       obtenerNombreContacto();
     }
-  }, [userType, clienteId, psicologoId]);
+  }, [userType, clienteId, psicologoId, obtenerNombreContactoLocal]);
 
   useEffect(() => {
     const setupChat = async () => {
