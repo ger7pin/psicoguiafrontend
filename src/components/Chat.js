@@ -47,14 +47,56 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const usuarioId = usuarioActual?.id;
 
   // Obtener el nombre del contacto
+  // Función para obtener el nombre del contacto usando datos previamente cargados
+  const obtenerNombreContactoLocal = () => {
+    try {
+      // Determinar cuál ID estamos buscando
+      const idBuscado = userType === 'clientes' ? psicologoId : clienteId;
+      
+      // Intentar obtener datos desde localStorage
+      let contactosGuardados = [];
+      
+      // Dependiendo del tipo de usuario, buscar en psicólogos o clientes
+      if (userType === 'clientes') {
+        // Si somos cliente, buscamos en la lista de psicólogos
+        contactosGuardados = JSON.parse(localStorage.getItem('psicologos') || '[]');
+      } else {
+        // Si somos psicólogo, buscamos en la lista de clientes
+        contactosGuardados = JSON.parse(localStorage.getItem('clientes') || '[]');
+      }
+      
+      // También revisar en la lista genérica de contactos
+      const todosContactos = JSON.parse(localStorage.getItem('contactos') || '[]');
+      contactosGuardados = [...contactosGuardados, ...todosContactos];
+      
+      const contactoGuardado = contactosGuardados.find(c => c.id == idBuscado);
+      
+      if (contactoGuardado && contactoGuardado.nombre) {
+        setContactoNombre(contactoGuardado.nombre);
+        return true;
+      }
+      
+      // Si no encontramos, usar un nombre genérico pero descriptivo
+      setContactoNombre(`${userType === 'clientes' ? 'Psicólogo' : 'Cliente'} #${idBuscado}`);
+      return false;
+    } catch (error) {
+      console.error('Error obteniendo contacto local:', error);
+      setContactoNombre('Contacto');
+      return false;
+    }
+  };
+  
   useEffect(() => {
     const obtenerNombreContacto = async () => {
+      // Primero intentar con datos locales para una experiencia más rápida
+      const encontradoLocalmente = obtenerNombreContactoLocal();
+      
       try {
-        // Usar endpoint para obtener todos los usuarios y filtrar por ID localmente
-        // Esto evita problemas de rutas no existentes para IDs específicos
+        // Ahora intentar actualizar con datos del servidor
+        // Usar rutas alternativas ya que /api/psicologos y /api/clientes parecen no funcionar
         const endpoint = userType === 'clientes' ? 
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/psicologos` : 
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clientes`;
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/psicologos/todos` : 
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/todos`;
         
         console.log('Obteniendo datos de contacto desde:', endpoint);
         
@@ -107,40 +149,77 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
       // Usar el token disponible (desde el hook o el localStorage)
       const currentToken = token || authToken || localStorage.getItem('authToken');
       
+      // Si no hay token, intentar continuar sin él para al menos mostrar mensajes de Firebase
+      // Socket.io no funcionará, pero al menos podremos ver mensajes anteriores
       if (!currentToken) {
         console.log('No hay token disponible para inicializar el chat');
-        // Intentar renovar la sesión antes de abandonar
+        // Intentar renovar la sesión antes de continuar
         try {
-          const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/renew-token`, {
-            method: 'GET',
-            credentials: 'include'
-          });
+          // Probar múltiples rutas para renovar token, ya que no estamos seguros de cuál funciona
+          const endpoints = [
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/renew-token`,
+            `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/${userType}/renew`
+          ];
           
-          if (response.ok) {
-            const data = await response.json();
-            localStorage.setItem('authToken', data.token);
-            setAuthToken(data.token);
-            console.log('Token renovado, reintentando...');
-            // Continuar con el token renovado
-          } else {
-            return; // Abandonar si no se pudo renovar
+          let tokenRenovado = false;
+          
+          for (const endpoint of endpoints) {
+            try {
+              console.log('Intentando renovar token en:', endpoint);
+              const response = await fetch(endpoint, {
+                method: 'GET',
+                credentials: 'include'
+              });
+              
+              if (response.ok) {
+                const data = await response.json();
+                if (data.token) {
+                  localStorage.setItem('authToken', data.token);
+                  setAuthToken(data.token);
+                  console.log('Token renovado exitosamente desde:', endpoint);
+                  tokenRenovado = true;
+                  break;
+                }
+              }
+            } catch (innerErr) {
+              console.error(`Error con endpoint ${endpoint}:`, innerErr);
+            }
+          }
+          
+          if (!tokenRenovado) {
+            console.log('No se pudo renovar el token, continuando sin él...');
+            // Continuamos sin token para al menos mostrar mensajes de Firebase
           }
         } catch (err) {
           console.error('Error renovando token:', err);
-          return;
+          // Continuamos sin token para al menos mostrar mensajes de Firebase
         }
       }
       
       try {
-        // Inicializar Socket.io con el token disponible
-        const currentToken = token || authToken || localStorage.getItem('authToken');
-        const socket = initSocket(currentToken);
-        console.log('Socket inicializado:', socket ? 'Conectado' : 'Error al conectar', { tokenUsado: currentToken ? 'Disponible' : 'No disponible' });
+        // Inicializar chat en Firebase primero
+        // Esto permite que al menos la parte de Firebase funcione incluso si Socket.io falla
+        try {
+          const id = await initializeChat(clienteId, psicologoId);
+          console.log('Chat inicializado con ID:', id);
+          setChatId(id);
+        } catch (firebaseErr) {
+          console.error('Error inicializando chat en Firebase:', firebaseErr);
+          // Si falla Firebase, generamos un ID de chat en formato similar
+          const fallbackId = `${clienteId.toString().replace(/[/.]/g, '_')}_${psicologoId.toString().replace(/[/.]/g, '_')}`;
+          console.log('Usando ID de chat de respaldo:', fallbackId);
+          setChatId(fallbackId);
+        }
         
-        // Inicializar chat en Firebase
-        const id = await initializeChat(clienteId, psicologoId);
-        console.log('Chat inicializado con ID:', id);
-        setChatId(id);
+        // Intentar inicializar Socket.io con el token disponible
+        const currentToken = token || authToken || localStorage.getItem('authToken');
+        try {
+          const socket = initSocket(currentToken);
+          console.log('Socket inicializado:', socket ? 'Conectado' : 'Error al conectar', { tokenUsado: currentToken ? 'Disponible' : 'No disponible' });
+        } catch (socketErr) {
+          console.error('Error inicializando Socket.io:', socketErr);
+          // Continuamos a pesar del error en Socket.io
+        }
         
         // Suscribirse a los mensajes en Firebase
         const q = query(
