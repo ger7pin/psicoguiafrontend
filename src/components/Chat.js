@@ -17,9 +17,18 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const [timeoutId, setTimeoutId] = useState(null);
   const chatRef = useRef(null);
   
-  // Determinar automáticamente si es cliente o psicólogo basado en los IDs proporcionados
-  const userType = clienteId === localStorage.getItem('userId') ? 'clientes' : 'psicologos';
+  // Determinar el tipo de usuario basado en la URL actual
+  const pathname = typeof window !== 'undefined' ? window.location.pathname : '';
+  const userType = pathname.includes('/clientes/') ? 'clientes' : 'psicologos';
   const { cliente: usuarioActual, token } = useAuthUser(userType);
+  
+  // Guardar el ID del usuario en localStorage cuando esté disponible
+  useEffect(() => {
+    if (usuarioActual?.id) {
+      localStorage.setItem('userId', usuarioActual.id);
+      localStorage.setItem('userType', userType);
+    }
+  }, [usuarioActual, userType]);
   const usuarioId = usuarioActual?.id;
 
   useEffect(() => {
