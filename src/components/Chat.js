@@ -47,61 +47,48 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const usuarioId = usuarioActual?.id;
 
   // Obtener el nombre del contacto
-  // Función para obtener el nombre del contacto usando datos previamente cargados
+  // Función para obtener el nombre del contacto de localStorage
   const obtenerNombreContactoLocal = () => {
     try {
-      // Determinar cuál ID estamos buscando
       const idBuscado = userType === 'clientes' ? psicologoId : clienteId;
       
-      // Intentar obtener datos desde localStorage
-      let contactosGuardados = [];
+      // Buscar en las distintas fuentes de datos en localStorage
+      let todosContactos = [];
+      try { todosContactos = [...todosContactos, ...JSON.parse(localStorage.getItem('contactos') || '[]')]; } catch (e) {}
+      try { todosContactos = [...todosContactos, ...JSON.parse(localStorage.getItem('psicologos') || '[]')]; } catch (e) {}
+      try { todosContactos = [...todosContactos, ...JSON.parse(localStorage.getItem('clientes') || '[]')]; } catch (e) {}
       
-      // Dependiendo del tipo de usuario, buscar en psicólogos o clientes
-      if (userType === 'clientes') {
-        // Si somos cliente, buscamos en la lista de psicólogos
-        contactosGuardados = JSON.parse(localStorage.getItem('psicologos') || '[]');
-      } else {
-        // Si somos psicólogo, buscamos en la lista de clientes
-        contactosGuardados = JSON.parse(localStorage.getItem('clientes') || '[]');
+      const contacto = todosContactos.find(c => c.id == idBuscado);
+      if (contacto?.nombre) {
+        return contacto.nombre;
       }
       
-      // También revisar en la lista genérica de contactos
-      const todosContactos = JSON.parse(localStorage.getItem('contactos') || '[]');
-      contactosGuardados = [...contactosGuardados, ...todosContactos];
-      
-      const contactoGuardado = contactosGuardados.find(c => c.id == idBuscado);
-      
-      if (contactoGuardado && contactoGuardado.nombre) {
-        setContactoNombre(contactoGuardado.nombre);
-        return true;
-      }
-      
-      // Si no encontramos, usar un nombre genérico pero descriptivo
-      setContactoNombre(`${userType === 'clientes' ? 'Psicólogo' : 'Cliente'} #${idBuscado}`);
-      return false;
-    } catch (error) {
-      console.error('Error obteniendo contacto local:', error);
-      setContactoNombre('Contacto');
-      return false;
+      return `${userType === 'clientes' ? 'Psicólogo' : 'Cliente'} #${idBuscado}`;
+    } catch (e) {
+      console.error('Error obteniendo nombre local:', e);
+      return 'Contacto';
     }
   };
   
   useEffect(() => {
     const obtenerNombreContacto = async () => {
-      // Primero intentar con datos locales para una experiencia más rápida
-      const encontradoLocalmente = obtenerNombreContactoLocal();
-      
       try {
-        // Ahora intentar actualizar con datos del servidor
-        // Usar rutas alternativas ya que /api/psicologos y /api/clientes parecen no funcionar
+        // Primero establecer un nombre desde datos locales
+        setContactoNombre(obtenerNombreContactoLocal());
+        
+        // Luego intentar obtener el nombre actualizado del servidor
+        // Usar las rutas existentes en el backend según rutas.js
         const endpoint = userType === 'clientes' ? 
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/psicologos/todos` : 
-          `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/todos`;
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/psicologos/${psicologoId}` : 
+          `${process.env.NEXT_PUBLIC_BACKEND_URL}/clientes/${clienteId}`;
         
         console.log('Obteniendo datos de contacto desde:', endpoint);
         
         const response = await fetch(endpoint, {
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json'
+          }
         });
         
         if (response.ok) {
@@ -149,76 +136,72 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
       // Usar el token disponible (desde el hook o el localStorage)
       const currentToken = token || authToken || localStorage.getItem('authToken');
       
-      // Si no hay token, intentar continuar sin él para al menos mostrar mensajes de Firebase
-      // Socket.io no funcionará, pero al menos podremos ver mensajes anteriores
+      // Si no hay token disponible
       if (!currentToken) {
         console.log('No hay token disponible para inicializar el chat');
-        // Intentar renovar la sesión antes de continuar
+        
+        // Intentar renovar la sesión usando la ruta de verificación
         try {
-          // Probar múltiples rutas para renovar token, ya que no estamos seguros de cuál funciona
-          const endpoints = [
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/renew-token`,
-            `${process.env.NEXT_PUBLIC_BACKEND_URL}/auth/${userType}/renew`
-          ];
+          // Usar la ruta de verificación que existe en el backend
+          const verifyEndpoint = `${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`;
+          console.log('Intentando obtener token desde:', verifyEndpoint);
           
-          let tokenRenovado = false;
-          
-          for (const endpoint of endpoints) {
-            try {
-              console.log('Intentando renovar token en:', endpoint);
-              const response = await fetch(endpoint, {
-                method: 'GET',
-                credentials: 'include'
-              });
-              
-              if (response.ok) {
-                const data = await response.json();
-                if (data.token) {
-                  localStorage.setItem('authToken', data.token);
-                  setAuthToken(data.token);
-                  console.log('Token renovado exitosamente desde:', endpoint);
-                  tokenRenovado = true;
-                  break;
-                }
-              }
-            } catch (innerErr) {
-              console.error(`Error con endpoint ${endpoint}:`, innerErr);
+          const response = await fetch(verifyEndpoint, {
+            method: 'GET',
+            credentials: 'include',
+            headers: {
+              'Accept': 'application/json'
             }
-          }
+          });
           
-          if (!tokenRenovado) {
-            console.log('No se pudo renovar el token, continuando sin él...');
-            // Continuamos sin token para al menos mostrar mensajes de Firebase
+          if (response.ok) {
+            const data = await response.json();
+            if (data.id) {
+              // La verificación fue exitosa, podemos continuar aunque no tengamos el token explícito
+              // El token estará en las cookies y se enviará automáticamente
+              console.log('Sesión verificada correctamente, continuando...');
+              // Guardar los datos del usuario pero sin token explícito
+              // ya que está en las cookies y se maneja automáticamente
+              localStorage.setItem('userId', data.id);
+              localStorage.setItem('userType', userType);
+            } else {
+              console.log('Verificación exitosa pero sin datos de usuario');  
+              return; // Abandonar
+            }
+          } else {
+            console.error('Verificación fallida, redirección necesaria');
+            // En este punto, debemos abandonar ya que no hay autenticación
+            return;
           }
         } catch (err) {
-          console.error('Error renovando token:', err);
-          // Continuamos sin token para al menos mostrar mensajes de Firebase
+          console.error('Error en la verificación:', err);
+          return;
         }
       }
       
       try {
-        // Inicializar chat en Firebase primero
-        // Esto permite que al menos la parte de Firebase funcione incluso si Socket.io falla
+        // Inicializar Firebase primero (esto es independiente del token)
+        let chatID;
         try {
-          const id = await initializeChat(clienteId, psicologoId);
-          console.log('Chat inicializado con ID:', id);
-          setChatId(id);
-        } catch (firebaseErr) {
-          console.error('Error inicializando chat en Firebase:', firebaseErr);
-          // Si falla Firebase, generamos un ID de chat en formato similar
-          const fallbackId = `${clienteId.toString().replace(/[/.]/g, '_')}_${psicologoId.toString().replace(/[/.]/g, '_')}`;
-          console.log('Usando ID de chat de respaldo:', fallbackId);
-          setChatId(fallbackId);
+          chatID = await initializeChat(clienteId, psicologoId);
+          console.log('Chat inicializado con ID:', chatID);
+        } catch (firebaseError) {
+          console.error('Error inicializando Firebase:', firebaseError);
+          // Generar un ID manualmente como respaldo
+          chatID = `${clienteId.toString().replace(/[/.]/g, '_')}_${psicologoId.toString().replace(/[/.]/g, '_')}`;
+          console.log('Usando ID de chat de respaldo:', chatID);
         }
         
-        // Intentar inicializar Socket.io con el token disponible
+        setChatId(chatID);
+        
+        // Inicializar Socket.io con el token disponible (o sin él)
         const currentToken = token || authToken || localStorage.getItem('authToken');
         try {
           const socket = initSocket(currentToken);
-          console.log('Socket inicializado:', socket ? 'Conectado' : 'Error al conectar', { tokenUsado: currentToken ? 'Disponible' : 'No disponible' });
+          console.log('Socket inicializado:', socket ? 'Conectado' : 'Error al conectar');
         } catch (socketErr) {
           console.error('Error inicializando Socket.io:', socketErr);
-          // Continuamos a pesar del error en Socket.io
+          // Continuamos igual para al menos mostrar mensajes de Firebase
         }
         
         // Suscribirse a los mensajes en Firebase
@@ -299,8 +282,17 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
   const enviarMensaje = async (e) => {
     e.preventDefault();
     if (!mensaje.trim() && !archivo) return;
-    if (!usuarioId) return toast.error('Error: Usuario no autenticado');
-    if (!chatId) return toast.error('Error: Chat no inicializado');
+    if (!usuarioId) {
+      toast.error('Error: Usuario no autenticado');
+      // Intentar obtener el ID de localStorage como último recurso
+      const storedUserId = localStorage.getItem('userId');
+      if (!storedUserId) return;
+      usuarioId = storedUserId;
+    }
+    if (!chatId) {
+      toast.error('Error: Chat no inicializado');
+      return;
+    }
     
     // Evitar múltiples envíos
     if (enviandoMensaje) return;
@@ -308,8 +300,12 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
 
     try {
       // Detener señal de escritura
-      sendTypingStatus(psicologoId, false);
-      if (timeoutId) clearTimeout(timeoutId);
+      try {
+        sendTypingStatus(psicologoId, false);
+        if (timeoutId) clearTimeout(timeoutId);
+      } catch (typingErr) {
+        console.error('Error al enviar estado de escritura:', typingErr);
+      }
       
       const messageData = {
         content: mensaje,
@@ -317,11 +313,22 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
         timestamp: serverTimestamp()
       };
 
-      // Guardar mensaje en Firebase
-      await addDoc(collection(db, 'chats', chatId, 'messages'), messageData);
-
-      // Actualizar último mensaje en el documento principal del chat
-      await updateChatMessage(chatId, messageData);
+      // Guardar mensaje en Firebase con manejo de errores
+      try {
+        await addDoc(collection(db, 'chats', chatId, 'messages'), messageData);
+        
+        // Si el mensaje se guardó correctamente en Firebase, intentar actualizar el documento principal
+        try {
+          await updateChatMessage(chatId, messageData);
+        } catch (updateErr) {
+          console.error('Error al actualizar chat document:', updateErr);
+          // Continuamos igualmente para al menos mostrar el mensaje en la UI
+        }
+      } catch (firestoreErr) {
+        console.error('Error al guardar mensaje en Firebase:', firestoreErr);
+        toast.error('Error al guardar mensaje');
+        throw firestoreErr; // Propagar el error para abortar el envío
+      }
       
       // Enviar mensaje a través de Socket.io para comunicación en tiempo real
       const receptorId = userType === 'clientes' ? psicologoId : clienteId; // Si es cliente, envía al psicólogo y viceversa
