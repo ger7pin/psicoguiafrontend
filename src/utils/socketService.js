@@ -5,37 +5,94 @@ let socket;
 
 export const initSocket = (token) => {
   // Cerrar la conexión existente si la hay
-  if (socket) socket.disconnect();
+  if (socket) {
+    try {
+      socket.disconnect();
+      console.log('Socket previo desconectado');
+    } catch (e) {
+      console.warn('Error al desconectar socket anterior:', e);
+    }
+  }
 
   // Crear una nueva conexión
   const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+  console.log('Conectando socket a:', BACKEND_URL);
   
-  socket = io(BACKEND_URL, {
-    auth: { token },
-    transports: ['websocket', 'polling'],
-    withCredentials: true
-  });
+  try {
+    // Opciones de conexión mejoradas
+    socket = io(BACKEND_URL, {
+      auth: token ? { token } : undefined,
+      transports: ['websocket', 'polling'],
+      withCredentials: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000,
+      timeout: 20000
+    });
 
-  // Manejadores de eventos generales
-  socket.on('connect', () => {
-    console.log('Conectado a Socket.IO');
-    toast.success('Conexión en tiempo real establecida');
-  });
+    // Manejadores de eventos generales
+    socket.on('connect', () => {
+      console.log('Conectado a Socket.IO');
+      // Enviar autenticación manual si tenemos token
+      if (token) {
+        console.log('Enviando autenticación manual con token');
+        socket.emit('authenticate', { token });
+      }
+      toast.success('Conexión en tiempo real establecida');
+    });
+    
+    // Evento de autenticación exitosa
+    socket.on('authenticated', (data) => {
+      if (data.success) {
+        console.log('Autenticación socket exitosa, userId:', data.userId);
+        toast.success('Autenticación completada');
+      } else {
+        console.warn('Fallo en autenticación socket:', data.error);
+        toast.error(`Error de autenticación: ${data.error || 'Desconocido'}`);
+      }
+    });
 
-  socket.on('connect_error', (error) => {
-    console.error('Error de conexión Socket.IO:', error.message);
-    toast.error(`Error de conexión: ${error.message}`);
-  });
+    socket.on('connect_error', (error) => {
+      console.error('Error de conexión Socket.IO:', error.message);
+      toast.error(`Error de conexión: ${error.message}`);
+    });
+    
+    // Escuchar confirmaciones de mensajes enviados
+    socket.on('message sent', (data) => {
+      if (data.success) {
+        console.log('Mensaje enviado correctamente, ID:', data.messageId);
+      } else {
+        console.error('Error al enviar mensaje:', data.error);
+        toast.error(`Error al enviar: ${data.error || 'Desconocido'}`);
+      }
+    });
 
-  socket.on('disconnect', (reason) => {
-    console.log('Desconectado de Socket.IO:', reason);
-    if (reason === 'io server disconnect') {
-      // Reconectar si el servidor desconectó
-      socket.connect();
-    }
-  });
+    socket.on('disconnect', (reason) => {
+      console.log('Desconectado de Socket.IO:', reason);
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        // Reconectar si el servidor desconectó o se cerró el transporte
+        console.log('Intentando reconectar...');
+        setTimeout(() => {
+          try {
+            socket.connect();
+          } catch (e) {
+            console.error('Error al reconectar:', e);
+          }
+        }, 1000);
+      }
+    });
+    
+    // Registrar cualquier error general
+    socket.on('error', (error) => {
+      console.error('Error en socket:', error);
+    });
+    
+    return socket;
+  } catch (error) {
+    console.error('Error al crear socket:', error);
+    toast.error('No se pudo establecer conexión en tiempo real');
+    return null;
+  }
 
-  return socket;
 };
 
 // Obtener la instancia actual del socket
@@ -43,26 +100,53 @@ export const getSocket = () => socket;
 
 // Enviar mensaje de chat
 export const sendChatMessage = (receptorId, mensaje) => {
-  if (!socket || !socket.connected) {
-    toast.error('No hay conexión en tiempo real');
+  if (!socket) {
+    console.warn('No hay instancia de socket inicializada');
     return false;
   }
-
-  socket.emit('chat message', {
-    receptorId,
-    mensaje
-  });
   
-  return true;
+  if (!socket.connected) {
+    console.warn('Socket no conectado, intentando reconectar...');
+    try {
+      socket.connect();
+    } catch (e) {
+      console.error('Error al reconectar socket:', e);
+      toast.error('No hay conexión en tiempo real');
+      return false;
+    }
+  }
+
+  try {
+    // Formato correcto del mensaje para el backend
+    socket.emit('chat message', {
+      receptorId: String(receptorId),
+      ...mensaje
+    });
+    
+    console.log(`Mensaje emitido a ${receptorId}:`, mensaje.content?.substr(0, 20) + '...');
+    return true;
+  } catch (error) {
+    console.error('Error al enviar mensaje por socket:', error);
+    toast.error('Error al enviar mensaje');
+    return false;
+  }
 };
 
 // Suscribirse a nuevos mensajes
 export const subscribeToMessages = (callback) => {
-  if (!socket) return () => {};
+  if (!socket) {
+    console.warn('No hay socket iniciado para suscribirse a mensajes');
+    return () => {};
+  }
   
-  socket.on('chat message', callback);
+  console.log('Suscrito a eventos de mensajes de chat');
+  socket.on('chat message', (data) => {
+    console.log('Mensaje recibido:', data);
+    callback(data);
+  });
   
   return () => {
+    console.log('Cancelando suscripción a mensajes');
     socket.off('chat message', callback);
   };
 };
@@ -92,7 +176,39 @@ export const subscribeToTypingStatus = (callback) => {
 // Desconectar socket
 export const disconnectSocket = () => {
   if (socket) {
-    socket.disconnect();
-    console.log('Socket desconectado manualmente');
+    try {
+      socket.disconnect();
+      console.log('Socket desconectado manualmente');
+    } catch (error) {
+      console.error('Error al desconectar socket:', error);
+    }
+  }
+};
+
+// Verificar estado de la conexión
+export const isSocketConnected = () => {
+  return socket && socket.connected;
+};
+
+// Forzar reconexión manual
+export const reconnectSocket = (token) => {
+  if (!socket) {
+    return initSocket(token);
+  }
+  
+  try {
+    if (!socket.connected) {
+      console.log('Intentando reconectar socket...');
+      socket.connect();
+      
+      // Si tenemos token, enviar autenticación
+      if (token) {
+        socket.emit('authenticate', { token });
+      }
+    }
+    return socket;
+  } catch (error) {
+    console.error('Error al reconectar:', error);
+    return null;
   }
 };

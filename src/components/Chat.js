@@ -188,8 +188,17 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
         } catch (firebaseError) {
           console.error('Error inicializando Firebase:', firebaseError);
           // Generar un ID manualmente como respaldo
-          chatID = `${clienteId.toString().replace(/[/.]/g, '_')}_${psicologoId.toString().replace(/[/.]/g, '_')}`;
-          console.log('Usando ID de chat de respaldo:', chatID);
+          try {
+            // Asegurarse de que clienteId y psicologoId sean strings y manejar cualquier caso nulo
+            const clienteIdStr = clienteId ? String(clienteId) : 'unknown';
+            const psicologoIdStr = psicologoId ? String(psicologoId) : 'unknown';
+            chatID = `${clienteIdStr.replace(/[/.]/g, '_')}_${psicologoIdStr.replace(/[/.]/g, '_')}`;
+            console.log('Usando ID de chat de respaldo:', chatID);
+          } catch (strError) {
+            // Último recurso si todo falla
+            console.error('Error creando ID de respaldo:', strError);
+            chatID = `${Date.now()}_fallback`;
+          }
         }
         
         setChatId(chatID);
@@ -206,7 +215,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
         
         // Suscribirse a los mensajes en Firebase
         const q = query(
-          collection(db, 'chats', id, 'messages'),
+          collection(db, 'chats', chatID, 'messages'), // Usar chatID en lugar de id
           orderBy('timestamp', 'asc')
         );
 
@@ -221,7 +230,7 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
         // Suscribirse a mensajes en tiempo real via Socket.io
         const unsubscribeSocketMessages = subscribeToMessages((msg) => {
           // Solo procesamos mensajes que sean para este chat
-          if (msg.chatId === id) {
+          if (msg.chatId === chatID) {
             // Los mensajes de Socket.io se guardarán en Firebase automáticamente
             // por el controlador de mensajes del backend
             console.log('Mensaje recibido por Socket.io:', msg);
@@ -396,9 +405,22 @@ const Chat = ({ clienteId, psicologoId, onClose }) => {
             }`}>
               <p>{msg.content}</p>
               <p className="text-xs mt-1 opacity-60">
-                {msg.timestamp?.toDate ? 
-                  new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : 
-                  '...'}
+                {(() => {
+                  try {
+                    if (msg.timestamp?.toDate) {
+                      return new Date(msg.timestamp.toDate()).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    } else if (msg.timestamp instanceof Date) {
+                      return msg.timestamp.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    } else if (typeof msg.timestamp === 'string') {
+                      return new Date(msg.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                    } else {
+                      return '...';  
+                    }
+                  } catch (e) {
+                    console.warn('Error al formatear fecha:', e);
+                    return '...'; 
+                  }
+                })()}
               </p>
             </div>
           </div>
