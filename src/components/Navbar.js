@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import FIRButton from '@/components/FIRButton'; // Ajusta la ruta si es necesario
+import { safeFetch } from '@/utils/apiUtils';
 
 export default function Navbar() {
   const [logueado, setLogueado] = useState(false);
@@ -16,21 +17,22 @@ export default function Navbar() {
   useEffect(() => {
     const verificarSesion = async () => {
       try {
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${tipo}/verify`, {
+        const { data, ok } = await safeFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${tipo}/verify`, {
           credentials: 'include',
         });
-        const data = await res.json();
-        if (res.ok && data.email) {
+
+        if (ok && data && data.email) {
           setLogueado(true);
         } else {
           setLogueado(false);
+        }
         }
       } catch (error) {
         console.error('❌ Error al verificar sesión:', error);
         setLogueado(false);
       }
     };
-  
+
     verificarSesion();
   }, [tipo]);
 

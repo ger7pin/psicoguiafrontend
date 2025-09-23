@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { safeFetch } from '@/utils/apiUtils';
 
 export default function LoginForm({ userType }) {
   const [email, setEmail] = useState('');
@@ -14,16 +15,15 @@ export default function LoginForm({ userType }) {
     setError('');
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/login`, {
+      const { data, ok } = await safeFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/login`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.message || 'Error al iniciar sesión');
+      if (!ok) {
+        setError(data?.message || 'Error al iniciar sesión');
         return;
       }
 

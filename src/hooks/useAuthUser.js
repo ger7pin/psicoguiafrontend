@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { safeFetch } from '@/utils/apiUtils';
 
 const useAuthUser = (userType) => {
   const [cliente, setCliente] = useState(null);
@@ -14,7 +15,7 @@ const useAuthUser = (userType) => {
 
     // Obtener token guardado para el tipo de usuario actual
     const tokenGuardado = localStorage.getItem(`authToken_${userType}`) || localStorage.getItem('authToken');
-    
+
     // Función auxiliar para determinar si debemos redireccionar
     const debeRedirigir = () => {
       // Solo redirigir si estamos realmente en el dashboard correspondiente al userType
@@ -22,7 +23,7 @@ const useAuthUser = (userType) => {
       if (!window.location.pathname.includes('dashboard')) {
         return false;
       }
-      
+
       // Verificar si estamos en el dashboard correcto para el tipo de usuario
       const enDashboardPropioDeUsuario = window.location.pathname.includes(`/${userType}/dashboard`);
       return enDashboardPropioDeUsuario;
@@ -35,34 +36,32 @@ const useAuthUser = (userType) => {
           'Accept': 'application/json',
           'Content-Type': 'application/json'
         };
-        
+
         if (tokenGuardado) {
           headers['Authorization'] = `Bearer ${tokenGuardado}`;
         }
 
         console.log(`Verificando sesión para ${userType} (intento ${intentoVerificacion + 1})`);
-        
-        const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
+
+        const { data, ok } = await safeFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
           method: 'GET',
           credentials: 'include',
           headers: headers
         });
 
-        const data = await res.json();
-
         if (!isMounted) return;
 
-        if (res.ok && data.email) {
+        if (ok && data && data.email) {
           // Sesión válida, guardar datos y token
           setCliente(data);
           setToken(data.token);
-          
+
           // Si hay un nuevo token, guardarlo en localStorage
           if (data.token) {
             localStorage.setItem(`authToken_${userType}`, data.token);
             localStorage.setItem('authToken', data.token);
           }
-          
+
           // Guardar el tipo de usuario para futuras referencias
           localStorage.setItem('userType', userType);
           if (data.id) {

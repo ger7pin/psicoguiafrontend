@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { safeFetch } from '@/utils/apiUtils';
 
 export default function RegisterForm({ userType }) {
   const [email, setEmail] = useState('');
@@ -21,15 +22,13 @@ export default function RegisterForm({ userType }) {
         : { email, password, nombre, telefono, especialidad: extraField };
 
     try {
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/register`, {
+      const { data, ok } = await safeFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/register`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
-      const data = await res.json();
-
-      if (res.ok) {
+      if (ok) {
         setMensaje('Registro exitoso. Redirigiendo al login...');
         setTimeout(() => {
           router.push(`/${userType}/login`);
@@ -37,7 +36,7 @@ export default function RegisterForm({ userType }) {
       } else {
         setMensaje(data?.message || 'Error al registrar usuario');
       }
-    } catch{
+    } catch {
       setMensaje('Error de conexión con el servidor');
     }
   };
