@@ -26,7 +26,6 @@ export default function Navbar() {
         } else {
           setLogueado(false);
         }
-        }
       } catch (error) {
         console.error('❌ Error al verificar sesión:', error);
         setLogueado(false);
