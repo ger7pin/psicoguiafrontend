@@ -1,108 +1,227 @@
+
 'use client';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { safeFetch } from '@/utils/apiUtils';
+import { createClient } from '@/lib/supabase';
 
+/**
+ * Hook de autenticación actualizado para Supabase
+ * ELIMINA: localStorage tokens (vulnerabilidad crítica)
+ * IMPLEMENTA: Supabase Auth con httpOnly cookies (seguro)
+ */
 const useAuthUser = (userType) => {
-  const [cliente, setCliente] = useState(null);
-  const [token, setToken] = useState(null);
+  const [usuario, setUsuario] = useState(null);
+  const [session, setSession] = useState(null);
   const [cargando, setCargando] = useState(true);
-  const [intentoVerificacion, setIntentoVerificacion] = useState(0);
+  const [error, setError] = useState(null);
   const router = useRouter();
+  const supabase = createClient();
 
   useEffect(() => {
     let isMounted = true;
 
-    // Obtener token guardado para el tipo de usuario actual
-    const tokenGuardado = localStorage.getItem(`authToken_${userType}`) || localStorage.getItem('authToken');
-
-    // Función auxiliar para determinar si debemos redireccionar
-    const debeRedirigir = () => {
-      // Solo redirigir si estamos realmente en el dashboard correspondiente al userType
-      // y no cuando estamos en un dashboard diferente (por ejemplo, en el chat dentro del dashboard)
-      if (!window.location.pathname.includes('dashboard')) {
-        return false;
-      }
-
-      // Verificar si estamos en el dashboard correcto para el tipo de usuario
-      const enDashboardPropioDeUsuario = window.location.pathname.includes(`/${userType}/dashboard`);
-      return enDashboardPropioDeUsuario;
-    };
-
-    const verificarSesion = async () => {
+    // Función para obtener sesión actual
+    const obtenerSesion = async () => {
       try {
-        // Agregar el token guardado como header adicional para reforzar la autenticación
-        const headers = {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json'
-        };
+        setCargando(true);
+        setError(null);
 
-        if (tokenGuardado) {
-          headers['Authorization'] = `Bearer ${tokenGuardado}`;
+        // Obtener sesión de Supabase (usa httpOnly cookies automáticamente)
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+        
+        if (sessionError) {
+          console.error('❌ Error obteniendo sesión:', sessionError);
+          setError(sessionError.message);
+          return;
         }
 
-        console.log(`Verificando sesión para ${userType} (intento ${intentoVerificacion + 1})`);
+        if (!session) {
+          // No hay sesión activa
+          if (isMounted) {
+            setUsuario(null);
+            setSession(null);
+            setCargando(false);
+          }
+          return;
+        }
 
-        const { data, ok } = await safeFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/verify`, {
+        // Obtener datos completos del usuario desde nuestro backend
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/verify`, {
           method: 'GET',
-          credentials: 'include',
-          headers: headers
+          headers: {
+            'Authorization': `Bearer ${session.access_token}`,
+            'Content-Type': 'application/json'
+          },
+          credentials: 'include'
         });
 
-        if (!isMounted) return;
+        if (!response.ok) {
+          throw new Error('Error verificando usuario');
+        }
 
-        if (ok && data && data.email) {
-          // Sesión válida, guardar datos y token
-          setCliente(data);
-          setToken(data.token);
+        const { data } = await response.json();
+        
+        // Verificar tipo de usuario si se especifica
+        if (userType && data.user.tipo !== userType) {
+          setError(`Usuario no es del tipo ${userType}`);
+          return;
+        }
 
-          // Si hay un nuevo token, guardarlo en localStorage
-          if (data.token) {
-            localStorage.setItem(`authToken_${userType}`, data.token);
-            localStorage.setItem('authToken', data.token);
-          }
-
-          // Guardar el tipo de usuario para futuras referencias
-          localStorage.setItem('userType', userType);
-          if (data.id) {
-            localStorage.setItem('userId', data.id);
-          }
-          
-          setCargando(false);
-        } else {
-          // La sesión no es válida
-          if (debeRedirigir()) {
-            console.log(`Sesión inválida para ${userType}, redirigiendo a login`);
-            router.replace(`/${userType}/login`);
-          }
+        if (isMounted) {
+          setUsuario(data.user);
+          setSession(session);
           setCargando(false);
         }
+
       } catch (error) {
-        console.error(`Error verificando sesión para ${userType}:`, error);
+        console.error('❌ Error en autenticación:', error);
         if (isMounted) {
-          // Si es el primer intento, intentar de nuevo
-          if (intentoVerificacion === 0) {
-            setIntentoVerificacion(1);
-            return; // Salir para que el siguiente efecto intente de nuevo
-          }
-          
+          setError(error.message);
+          setUsuario(null);
+          setSession(null);
           setCargando(false);
-          if (debeRedirigir()) {
-            console.log(`Error de verificación para ${userType}, redirigiendo a login`);
-            router.replace(`/${userType}/login`);
-          }
         }
       }
     };
 
-    verificarSesion();
+    // Obtener sesión inicial
+    obtenerSesion();
 
+    // Escuchar cambios de autenticación
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        console.log('🔄 Auth state changed:', event);
+        
+        if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+          await obtenerSesion();
+        } else if (event === 'SIGNED_OUT') {
+          if (isMounted) {
+            setUsuario(null);
+            setSession(null);
+            setCargando(false);
+          }
+        }
+      }
+    );
+
+    // Cleanup
     return () => {
       isMounted = false;
+      subscription.unsubscribe();
     };
-  }, [userType, router, intentoVerificacion]);
+  }, [userType, router]);
 
-  return { cliente, cargando, token };
+  // Función para hacer login
+  const login = async (email, password) => {
+    try {
+      setCargando(true);
+      setError(null);
+
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        setError(error.message);
+        return { success: false, error: error.message };
+      }
+
+      return { success: true, data };
+    } catch (error) {
+      console.error('❌ Error en login:', error);
+      setError(error.message);
+      return { success: false, error: error.message };
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // Función para hacer logout
+  const logout = async () => {
+    try {
+      setCargando(true);
+      
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('❌ Error en logout:', error);
+        setError(error.message);
+        return { success: false, error: error.message };
+      }
+
+      // Limpiar estado local
+      setUsuario(null);
+      setSession(null);
+      
+      // Redirigir a login
+      router.push('/auth/login');
+      
+      return { success: true };
+    } catch (error) {
+      console.error('❌ Error en logout:', error);
+      setError(error.message);
+      return { success: false, error: error.message };
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  // Función para registrar usuario
+  const registro = async (userData) => {
+    try {
+      setCargando(true);
+      setError(null);
+
+      // Registrar en nuestro backend (que maneja Supabase Auth)
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/registro`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        credentials: 'include',
+        body: JSON.stringify(userData)
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        setError(result.message);
+        return { success: false, error: result.message };
+      }
+
+      return { success: true, data: result.data };
+    } catch (error) {
+      console.error('❌ Error en registro:', error);
+      setError(error.message);
+      return { success: false, error: error.message };
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  return {
+    // Estado
+    usuario,
+    session,
+    cargando,
+    error,
+    
+    // Funciones
+    login,
+    logout,
+    registro,
+    
+    // Propiedades de compatibilidad (para no romper código existente)
+    cliente: usuario, // Alias para compatibilidad
+    token: session?.access_token, // Token para APIs que lo requieran
+    
+    // Helpers
+    isAuthenticated: !!session,
+    isCliente: usuario?.tipo === 'cliente',
+    isPsicologo: usuario?.tipo === 'psicologo',
+    isAdmin: usuario?.tipo === 'admin'
+  };
 };
 
 export default useAuthUser;
