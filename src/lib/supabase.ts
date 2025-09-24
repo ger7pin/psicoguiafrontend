@@ -3,14 +3,54 @@ import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// Validar variables de entorno de Supabase
+function validateSupabaseEnvVars() {
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+  if (!supabaseUrl || !supabaseAnonKey) {
+    const missingVars = []
+    if (!supabaseUrl) missingVars.push('NEXT_PUBLIC_SUPABASE_URL')
+    if (!supabaseAnonKey) missingVars.push('NEXT_PUBLIC_SUPABASE_ANON_KEY')
+    
+    throw new Error(
+      `@supabase/ssr: Your project's URL and API key are required to create a Supabase client! ` +
+      `Missing environment variables: ${missingVars.join(', ')}. ` +
+      `Please check your .env.local file or deployment environment variables.`
+    )
+  }
+
+  return { supabaseUrl, supabaseAnonKey }
+}
+
+// Obtener variables de entorno validadas
+function getSupabaseConfig() {
+  // Solo validar en tiempo de ejecución, no durante el build
+  if (typeof window !== 'undefined' || process.env.NODE_ENV === 'development') {
+    return validateSupabaseEnvVars()
+  }
+  
+  // Durante el build, usar valores por defecto si no están disponibles
+  return {
+    supabaseUrl: process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+    supabaseAnonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+  }
+}
 
 /**
  * Cliente Supabase para componentes del lado del cliente
  * Utiliza cookies httpOnly para almacenar tokens de forma segura
  */
 export function createClient() {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
+  
+  if (!supabaseUrl || !supabaseAnonKey) {
+    throw new Error(
+      '@supabase/ssr: Cannot create client - Supabase environment variables are not configured. ' +
+      'Please set NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY in your environment.'
+    )
+  }
+  
   return createBrowserClient(supabaseUrl, supabaseAnonKey, {
     cookies: {
       getAll() {
@@ -63,6 +103,8 @@ export function createClient() {
  * Intercepta y maneja las cookies de autenticación en el middleware
  */
 export function createMiddlewareClient(request: NextRequest) {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
+  
   let response = NextResponse.next({
     request: {
       headers: request.headers,
@@ -106,6 +148,7 @@ export function createMiddlewareClient(request: NextRequest) {
  * Utiliza las cookies del servidor para autenticación
  */
 export async function createServerComponentClient() {
+  const { supabaseUrl, supabaseAnonKey } = getSupabaseConfig()
   const cookieStore = await cookies()
 
   return createServerClient(supabaseUrl, supabaseAnonKey, {
