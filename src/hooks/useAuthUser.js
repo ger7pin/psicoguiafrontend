@@ -45,16 +45,8 @@ const useAuthUser = (userType) => {
           return;
         }
 
-        if (!userType) {
-          if (isMounted) {
-            setUsuario(session.user);
-            setSession(session);
-            setCargando(false);
-          }
-          return;
-        }
         // Obtener datos completos del usuario desde nuestro backend
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/${userType}/verify`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/verify`, {
           method: 'GET',
           headers: {
             'Authorization': `Bearer ${session.access_token}`,
@@ -182,7 +174,7 @@ const useAuthUser = (userType) => {
       setError(null);
 
       // Registrar en nuestro backend (que maneja Supabase Auth)
-      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/${userData.tipo}/register`, {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/auth/registro`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

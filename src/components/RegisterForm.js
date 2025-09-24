@@ -9,7 +9,7 @@ export default function RegisterForm({ userType }) {
   const [password, setPassword] = useState('');
   const [nombre, setNombre] = useState('');
   const [telefono, setTelefono] = useState('');
-  const [extraField, setExtraField] = useState(''); // edad o especialidad
+  const [extraField, setExtraField] = useState(''); // edad o numero_licencia
   const [mensaje, setMensaje] = useState('');
   const router = useRouter();
 
@@ -19,7 +19,7 @@ export default function RegisterForm({ userType }) {
     const body =
       userType === 'clientes'
         ? { email, password, nombre, telefono, edad: extraField }
-        : { email, password, nombre, telefono, especialidad: extraField };
+        : { email, password, nombre, telefono, numero_licencia: extraField };
 
     try {
       const { data, ok } = await safeFetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/${userType}/register`, {
@@ -98,14 +98,26 @@ export default function RegisterForm({ userType }) {
           required
         />
 
-        <input
-          type="text"
-          placeholder={userType === 'clientes' ? 'Edad' : 'Especialidad'}
-          className="w-full border border-gray-300 p-2 rounded"
-          value={extraField}
-          onChange={(e) => setExtraField(e.target.value)}
-          required
-        />
+        {userType === 'psicologos' && (
+          <input
+            type="text"
+            placeholder="Número de Licencia"
+            className="w-full border border-gray-300 p-2 rounded"
+            value={extraField}
+            onChange={(e) => setExtraField(e.target.value)}
+            required
+          />
+        )}
+        {userType === 'clientes' && (
+          <input
+            type="text"
+            placeholder="Edad"
+            className="w-full border border-gray-300 p-2 rounded"
+            value={extraField}
+            onChange={(e) => setExtraField(e.target.value)}
+            required
+          />
+        )}
 
         <button
           type="submit"
