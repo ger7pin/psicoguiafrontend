@@ -89,7 +89,7 @@ const useAuthUser = (userType) => {
 
     // Escuchar cambios de autenticación
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      async (event) => {
         console.log('🔄 Auth state changed:', event);
         
         if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
@@ -109,7 +109,7 @@ const useAuthUser = (userType) => {
       isMounted = false;
       subscription.unsubscribe();
     };
-  }, [userType, router]);
+  }, [userType, router, supabase.auth]);
 
   // Función para hacer login
   const login = async (email, password) => {
