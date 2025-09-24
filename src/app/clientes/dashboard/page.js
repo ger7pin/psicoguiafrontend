@@ -1,5 +1,8 @@
 'use client';
 
+// Forzar renderizado dinámico para evitar prerendering
+export const dynamic = 'force-dynamic';
+
 import { useEffect, useState } from 'react';
 import Navbar from '@/components/Navbar';
 import ContactList from '@/components/ContactList';
