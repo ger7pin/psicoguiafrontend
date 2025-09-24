@@ -15,10 +15,10 @@ export default function RegistroSelector() {
           ¿Cómo deseas registrarte?
         </h1>
         <div className="flex flex-col gap-4">
-          <FIRButton href="/clientes/register" variant="primary">
+          <FIRButton href="/api/clientes/register" variant="primary">
             Registrarme como Cliente
           </FIRButton>
-          <FIRButton href="/psicologos/register" variant="secondary">
+          <FIRButton href="/api/psicologos/register" variant="secondary">
             Registrarme como Psicólogo
           </FIRButton>
         </div>
