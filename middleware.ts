@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
-import { createMiddlewareClient } from './lib/supabase'
+import { createMiddlewareClient } from './src/lib/supabase'
 
 /**
  * Middleware de Next.js para manejar autenticación con Supabase
