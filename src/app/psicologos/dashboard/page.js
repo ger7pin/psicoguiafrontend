@@ -29,7 +29,7 @@ export default function DashboardPsicologo() {
         // Cargar citas, contactos y clientes en paralelo
         const [citasData, contactosData, clientesData] = await Promise.all([
           obtenerCitas(),
-          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/contactos`, {
+          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/psicologos/contactos`, {
             credentials: 'include',
           }).then(res => res.json()),
           obtenerClientes()
@@ -56,7 +56,7 @@ export default function DashboardPsicologo() {
     // Verificar el estado de la conexión con Google Calendar
     const checkGoogleConnection = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/google/connection-status`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/psicologos/google/connection-status`, {
           credentials: 'include',
         });
         

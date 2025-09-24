@@ -38,7 +38,7 @@ export default function DashboardCliente() {
         const [psicos, citasBD, contactosBD] = await Promise.all([
           obtenerPsicologos(),
           obtenerCitas(),
-          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/contactos`, {
+          fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clientes/contactos`, {
             credentials: 'include',
           }).then(res => res.json())
         ]);
@@ -64,7 +64,7 @@ export default function DashboardCliente() {
     // Verificar el estado de la conexión con Google Calendar
     const checkGoogleConnection = async () => {
       try {
-        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/google/connection-status`, {
+        const response = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clientes/google/connection-status`, {
           credentials: 'include',
         });
         
@@ -122,7 +122,7 @@ export default function DashboardCliente() {
       setCitas(prev => [...prev, nueva.cita]);
 
       // Actualizar contactos
-      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/contactos`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/clientes/contactos`, {
         credentials: 'include',
       });
       const nuevosContactos = await res.json();
